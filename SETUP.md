@@ -128,7 +128,7 @@ npm run build
 
 **Self-hosted:**
 1. Upload `build` folder to web server
-2. Configure web server to serve React app
+2. Configure web server to serve Kalary Booking
 3. Set environment variables on server
 
 ### 6.3 Update Supabase Settings
