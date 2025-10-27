@@ -8,7 +8,8 @@ import {
   DocumentTextIcon,
   CogIcon,
   ArrowRightOnRectangleIcon,
-  Squares2X2Icon
+  Squares2X2Icon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline'
 
 const Layout: React.FC = () => {
@@ -21,6 +22,7 @@ const Layout: React.FC = () => {
     { name: 'Layouts', href: '/layouts', icon: Squares2X2Icon },
     { name: 'Book Seats', href: '/booking', icon: TicketIcon },
     { name: 'Ticket History', href: '/tickets', icon: DocumentTextIcon },
+    { name: 'Reports', href: '/reports', icon: ChartBarIcon },
     { name: 'Settings', href: '/settings', icon: CogIcon },
   ]
 
