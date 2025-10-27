@@ -197,7 +197,7 @@ const Reports: React.FC = () => {
           <CalendarIcon className="h-5 w-5 mr-2" />
           Select Show for Report
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {shows.map((show) => (
             <button
               key={show.id}
@@ -253,7 +253,7 @@ const Reports: React.FC = () => {
           ) : (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-blue-50 p-4 rounded-xl">
                   <div className="text-2xl font-bold text-blue-600">{summary.totalBookings}</div>
                   <div className="text-sm text-blue-800">Total Bookings</div>

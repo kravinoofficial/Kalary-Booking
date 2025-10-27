@@ -392,7 +392,7 @@ const Tickets: React.FC = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />

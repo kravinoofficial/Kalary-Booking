@@ -240,7 +240,7 @@ const Booking: React.FC = () => {
     const sections = selectedShow.layout.structure.sections || []
 
     return (
-      <div className="bg-white rounded-2xl p-6 min-h-[600px] w-full">
+      <div className="bg-white rounded-2xl p-3 sm:p-6 min-h-[400px] sm:min-h-[600px] w-full overflow-x-auto">
         {/* Stage at center */}
         <div className="flex flex-col items-center space-y-8">
 
@@ -302,7 +302,7 @@ const Booking: React.FC = () => {
           })}
 
           {/* Middle Section with East, Stage, West */}
-          <div className="flex items-center justify-center space-x-20 w-full min-h-[400px]">
+          <div className="flex items-center justify-center space-x-4 sm:space-x-8 lg:space-x-20 w-full min-h-[300px] sm:min-h-[400px]">
 
             {/* West Section */}
             {sections.filter((s: any) => s.name === 'West').map((section: any) => {
@@ -364,14 +364,14 @@ const Booking: React.FC = () => {
             })}
 
             {/* Central Stage */}
-            <div className="flex flex-col items-center justify-center mx-8">
-              <div className="w-36 h-36 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg">
+            <div className="flex flex-col items-center justify-center mx-2 sm:mx-4 lg:mx-8">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg">
                 <div className="text-center">
-                  <div className="text-xl font-bold">KALARY</div>
-                  <div className="text-sm opacity-90">STAGE</div>
+                  <div className="text-sm sm:text-lg lg:text-xl font-bold">KALARY</div>
+                  <div className="text-xs sm:text-sm opacity-90">STAGE</div>
                 </div>
               </div>
-              <div className="text-center mt-3 text-xs text-gray-500">All eyes this way please</div>
+              <div className="text-center mt-2 sm:mt-3 text-xs text-gray-500">All eyes this way please</div>
             </div>
 
             {/* East Section */}
@@ -521,7 +521,7 @@ const Booking: React.FC = () => {
       {/* Show Selection */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Show</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {shows.map((show) => (
             <button
               key={show.id}
