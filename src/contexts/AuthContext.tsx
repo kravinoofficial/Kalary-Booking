@@ -50,8 +50,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Supabase signOut error:', error)
+        throw error
+      }
+      // Clear user state immediately
+      setUser(null)
+    } catch (error) {
+      console.error('Error in signOut:', error)
+      // Even if there's an error, clear the local user state
+      setUser(null)
+      throw error
+    }
   }
 
   const value = {

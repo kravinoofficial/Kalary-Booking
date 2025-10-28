@@ -23,6 +23,7 @@ const Layout: React.FC = () => {
   const { user, signOut } = useAuth()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
+  const [signingOut, setSigningOut] = React.useState(false)
   // Initialize sidebar collapsed state from localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     if (typeof window !== 'undefined') {
@@ -65,6 +66,28 @@ const Layout: React.FC = () => {
   React.useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed))
   }, [sidebarCollapsed])
+
+  const handleSignOut = async () => {
+    try {
+      setSigningOut(true)
+      setShowProfile(false) // Close the dropdown
+      
+      // Call Supabase signOut to destroy the session/token
+      await signOut()
+      
+      // Navigate to login page
+      window.location.href = '/login'
+      
+    } catch (error) {
+      console.error('Error signing out:', error)
+      
+      // Even if there's an error, clear local storage and redirect
+      localStorage.clear()
+      window.location.href = '/login'
+    } finally {
+      setSigningOut(false)
+    }
+  }
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: HomeIcon },
@@ -145,9 +168,16 @@ const Layout: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={signOut}
-                  className={`p-2 rounded-lg transition-colors duration-200 touch-manipulation ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
-                  title="Sign Out"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className={`p-2 rounded-lg transition-colors duration-200 touch-manipulation ${
+                    signingOut 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : darkMode 
+                        ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' 
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title={signingOut ? "Signing Out..." : "Sign Out"}
                 >
                   <ArrowRightOnRectangleIcon className="h-6 w-6" />
                 </button>
@@ -233,9 +263,16 @@ const Layout: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={signOut}
-                className={`p-2 rounded-lg transition-colors duration-200 group relative ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
-                title="Sign Out"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className={`p-2 rounded-lg transition-colors duration-200 group relative ${
+                  signingOut 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : darkMode 
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                }`}
+                title={signingOut ? "Signing Out..." : "Sign Out"}
               >
                 <ArrowRightOnRectangleIcon className="h-4 w-4" />
                 {/* Tooltip for collapsed state */}
@@ -255,9 +292,16 @@ const Layout: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={signOut}
-                className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
-                title="Sign Out"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className={`p-2 rounded-lg transition-colors duration-200 ${
+                  signingOut 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : darkMode 
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                }`}
+                title={signingOut ? "Signing Out..." : "Sign Out"}
               >
                 <ArrowRightOnRectangleIcon className="h-5 w-5" />
               </button>
@@ -312,49 +356,103 @@ const Layout: React.FC = () => {
                   <BellIcon className="h-5 w-5" />
                 </button>
 
-                {/* Notifications Panel */}
+                {/* Notifications Panel - Desktop */}
                 {showNotifications && (
-                  <div className={`absolute right-0 sm:right-0 mt-2 w-screen sm:w-80 max-w-sm sm:max-w-none -mr-4 sm:mr-0 rounded-2xl shadow-xl border backdrop-blur-xl z-50 transition-all duration-200 ${darkMode ? 'bg-slate-900/95 border-slate-700/50' : 'bg-white/95 border-slate-200/50'}`}>
-                    {/* Header */}
-                    <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
-                      <h3 className={`text-lg font-semibold ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                        Notifications
-                      </h3>
-                      <button
-                        onClick={() => setShowNotifications(false)}
-                        className={`p-1 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                  <>
+                    {/* Mobile Modal */}
+                    <div 
+                      className="sm:hidden fixed top-16 left-0 right-0 bottom-0 z-50 flex items-start justify-center p-4 pt-8"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <div 
+                        className={`w-full max-w-sm mx-auto rounded-2xl shadow-xl border backdrop-blur-xl transition-all duration-200 ${darkMode ? 'bg-slate-900/95 border-slate-700/50' : 'bg-white/95 border-slate-200/50'}`}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6">
-                      <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                          <BellIcon className={`w-8 h-8 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+                        {/* Header */}
+                        <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
+                          <h3 className={`text-lg font-semibold ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                            Notifications
+                          </h3>
+                          <button
+                            onClick={() => setShowNotifications(false)}
+                            className={`p-1 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
                         </div>
-                        <div className="text-center">
-                          <h4 className={`text-lg font-medium mb-2 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                            This feature coming soon...
-                          </h4>
-                          <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                            We're working on bringing you real-time notifications for bookings, shows, and more.
-                          </p>
+
+                        {/* Content */}
+                        <div className="p-4">
+                          <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                              <BellIcon className={`w-8 h-8 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+                            </div>
+                            <div className="text-center">
+                              <h4 className={`text-lg font-medium mb-2 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                                This feature coming soon...
+                              </h4>
+                              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                We're working on bringing you real-time notifications for bookings, shows, and more.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className={`p-4 border-t ${darkMode ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
+                          <button
+                            className={`w-full py-2 px-4 rounded-xl text-sm font-medium transition-colors duration-200 ${darkMode ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                            onClick={() => setShowNotifications(false)}
+                          >
+                            Close
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className={`p-4 border-t ${darkMode ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
-                      <button
-                        className={`w-full py-2 px-4 rounded-xl text-sm font-medium transition-colors duration-200 ${darkMode ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                        onClick={() => setShowNotifications(false)}
-                      >
-                        Close
-                      </button>
+                    {/* Desktop Dropdown */}
+                    <div className="hidden sm:block absolute right-0 mt-2 w-80 rounded-2xl shadow-xl border backdrop-blur-xl z-50 transition-all duration-200 bg-white/95 border-slate-200/50 dark:bg-slate-900/95 dark:border-slate-700/50">
+                      {/* Header */}
+                      <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
+                        <h3 className={`text-lg font-semibold ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                          Notifications
+                        </h3>
+                        <button
+                          onClick={() => setShowNotifications(false)}
+                          className={`p-1 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-6">
+                        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                            <BellIcon className={`w-8 h-8 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+                          </div>
+                          <div className="text-center">
+                            <h4 className={`text-lg font-medium mb-2 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                              This feature coming soon...
+                            </h4>
+                            <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                              We're working on bringing you real-time notifications for bookings, shows, and more.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer */}
+                      <div className={`p-4 border-t ${darkMode ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
+                        <button
+                          className={`w-full py-2 px-4 rounded-xl text-sm font-medium transition-colors duration-200 ${darkMode ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                          onClick={() => setShowNotifications(false)}
+                        >
+                          Close
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
 
@@ -377,12 +475,19 @@ const Layout: React.FC = () => {
                 </button>
 
                 {showProfile && (
-                  <div className={`absolute right-0 mt-2 w-36 rounded-xl shadow-lg border py-2 z-50 transition-colors duration-200 backdrop-blur-sm ${darkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
+                  <div className={`absolute right-0 mt-2 w-36 rounded-xl shadow-lg border py-2 z-[60] pointer-events-auto transition-colors duration-200 backdrop-blur-sm ${darkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
                     <button
-                      onClick={signOut}
-                      className={`block w-full text-left px-4 py-3 text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
+                      onClick={handleSignOut}
+                      disabled={signingOut}
+                      className={`block w-full text-left px-4 py-3 text-sm font-medium transition-colors duration-200 ${
+                        signingOut 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : darkMode 
+                            ? 'text-slate-300 hover:bg-slate-800' 
+                            : 'text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
-                      Sign Out
+                      {signingOut ? 'Signing Out...' : 'Sign Out'}
                     </button>
                   </div>
                 )}
@@ -402,13 +507,13 @@ const Layout: React.FC = () => {
       {/* Click outside to close dropdowns */}
       {showProfile && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-30 pointer-events-auto"
           onClick={() => setShowProfile(false)}
         ></div>
       )}
       {showNotifications && (
         <div
-          className="fixed inset-0 z-40"
+          className="hidden sm:block fixed inset-0 z-40"
           onClick={() => setShowNotifications(false)}
         ></div>
       )}
