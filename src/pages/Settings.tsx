@@ -109,7 +109,7 @@ const Settings: React.FC = () => {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `kalary-bookings-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `Kalari-bookings-${new Date().toISOString().split('T')[0]}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
 

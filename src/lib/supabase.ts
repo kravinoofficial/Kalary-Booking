@@ -22,6 +22,7 @@ export interface Show {
   description?: string
   layout_id: string
   active: boolean
+  status?: 'ACTIVE' | 'HOUSE_FULL' | 'SHOW_STARTED' | 'SHOW_DONE'
   created_at: string
   layout?: Layout
 }

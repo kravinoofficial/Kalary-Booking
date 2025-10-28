@@ -6,6 +6,7 @@ import {
   ChartBarIcon,
   CalendarIcon
 } from '@heroicons/react/24/outline'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 interface BookingReport {
   booking_id: string
@@ -25,6 +26,7 @@ const Reports: React.FC = () => {
   const [selectedShow, setSelectedShow] = useState<Show | null>(null)
   const [bookingData, setBookingData] = useState<BookingReport[]>([])
   const [loading, setLoading] = useState(false)
+  const darkMode = useDarkMode()
   const [summary, setSummary] = useState({
     totalBookings: 0,
     totalTickets: 0,
@@ -187,13 +189,13 @@ const Reports: React.FC = () => {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-        <p className="text-gray-600 mt-2">Generate booking reports and export data</p>
+        <h1 className={`text-3xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Reports</h1>
+        <p className={`mt-2 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Generate booking reports and export data</p>
       </div>
 
       {/* Show Selection */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className={`rounded-2xl shadow-sm border p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <h2 className={`text-lg font-semibold mb-4 flex items-center transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           <CalendarIcon className="h-5 w-5 mr-2" />
           Select Show for Report
         </h2>
@@ -207,21 +209,42 @@ const Reports: React.FC = () => {
               }}
               className={`p-4 rounded-xl border-2 text-left transition-colors ${
                 selectedShow?.id === show.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? darkMode 
+                    ? 'border-blue-500 bg-blue-900/20' 
+                    : 'border-blue-500 bg-blue-50'
+                  : darkMode
+                    ? 'border-gray-600 hover:border-gray-500 bg-gray-700'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
               }`}
             >
-              <div className="font-medium text-gray-900">{show.title}</div>
-              <div className="text-sm text-gray-600">
+              <div className={`font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{show.title}</div>
+              <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {format(new Date(show.date), 'MMM dd, yyyy')} at {show.time}
               </div>
               <div className="text-sm font-medium text-blue-600">₹{show.price}</div>
-              <div className={`text-xs px-2 py-1 rounded-full inline-block mt-2 ${
-                show.active 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-gray-100 text-gray-600'
-              }`}>
-                {show.active ? 'Active' : 'Inactive'}
+              <div className="mt-2">
+                <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                  show.status === 'ACTIVE' 
+                    ? darkMode 
+                      ? 'bg-green-900/20 text-green-400 border border-green-800'
+                      : 'bg-green-100 text-green-800'
+                    : show.status === 'HOUSE_FULL'
+                      ? darkMode
+                        ? 'bg-orange-900/20 text-orange-400 border border-orange-800'
+                        : 'bg-orange-100 text-orange-800'
+                      : show.status === 'SHOW_STARTED'
+                        ? darkMode
+                          ? 'bg-yellow-900/20 text-yellow-400 border border-yellow-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                        : darkMode
+                          ? 'bg-gray-700 text-gray-300 border border-gray-600'
+                          : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {show.status === 'ACTIVE' ? 'Active' : 
+                   show.status === 'HOUSE_FULL' ? 'House Full' : 
+                   show.status === 'SHOW_STARTED' ? 'Show Started' :
+                   'Show Done'}
+                </div>
               </div>
             </button>
           ))}
@@ -230,9 +253,9 @@ const Reports: React.FC = () => {
 
       {/* Report Summary */}
       {selectedShow && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className={`rounded-2xl shadow-sm border p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+            <h2 className={`text-lg font-semibold flex items-center transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               <ChartBarIcon className="h-5 w-5 mr-2" />
               Booking Summary - {selectedShow.title}
             </h2>
@@ -254,21 +277,21 @@ const Reports: React.FC = () => {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 p-4 rounded-xl">
+                <div className={`p-4 rounded-xl transition-colors duration-200 ${darkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
                   <div className="text-2xl font-bold text-blue-600">{summary.totalBookings}</div>
-                  <div className="text-sm text-blue-800">Total Bookings</div>
+                  <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-blue-400' : 'text-blue-800'}`}>Total Bookings</div>
                 </div>
-                <div className="bg-green-50 p-4 rounded-xl">
+                <div className={`p-4 rounded-xl transition-colors duration-200 ${darkMode ? 'bg-green-900/20' : 'bg-green-50'}`}>
                   <div className="text-2xl font-bold text-green-600">{summary.totalTickets}</div>
-                  <div className="text-sm text-green-800">Total Tickets</div>
+                  <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-green-400' : 'text-green-800'}`}>Total Tickets</div>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-xl">
+                <div className={`p-4 rounded-xl transition-colors duration-200 ${darkMode ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
                   <div className="text-2xl font-bold text-purple-600">₹{summary.totalRevenue.toLocaleString()}</div>
-                  <div className="text-sm text-purple-800">Total Revenue</div>
+                  <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-purple-400' : 'text-purple-800'}`}>Total Revenue</div>
                 </div>
-                <div className="bg-orange-50 p-4 rounded-xl">
+                <div className={`p-4 rounded-xl transition-colors duration-200 ${darkMode ? 'bg-orange-900/20' : 'bg-orange-50'}`}>
                   <div className="text-2xl font-bold text-orange-600">{summary.averageTicketsPerBooking}</div>
-                  <div className="text-sm text-orange-800">Avg Tickets/Booking</div>
+                  <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-orange-400' : 'text-orange-800'}`}>Avg Tickets/Booking</div>
                 </div>
               </div>
 
@@ -276,67 +299,67 @@ const Reports: React.FC = () => {
               {bookingData.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className={`transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Booking ID
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Seats
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Tickets
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Amount
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Booked By
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Booking Time
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           Status
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className={`divide-y transition-colors duration-200 ${darkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'}`}>
                       {bookingData.map((booking) => (
-                        <tr key={booking.booking_id} className="hover:bg-gray-50">
+                        <tr key={booking.booking_id} className={`transition-colors duration-200 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-mono text-gray-900">
+                            <div className={`text-sm font-mono transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                               {booking.booking_id.slice(0, 8)}...
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">
+                            <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                               {booking.seat_codes.length > 3 
                                 ? `${booking.seat_codes.slice(0, 3).join(', ')}...` 
                                 : booking.seat_codes.join(', ')
                               }
                             </div>
                             {booking.seat_codes.length > 3 && (
-                              <div className="text-xs text-gray-500">
+                              <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                 +{booking.seat_codes.length - 3} more
                               </div>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                               {booking.total_tickets}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                               ₹{booking.total_amount.toLocaleString()}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{booking.booked_by}</div>
+                            <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{booking.booked_by}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
+                            <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                               {format(new Date(booking.booking_time), 'MMM dd, yyyy')}
                             </div>
                             <div className="text-sm text-gray-500">

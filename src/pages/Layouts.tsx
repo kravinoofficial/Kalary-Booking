@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import { supabase, Layout } from '../lib/supabase'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 const Layouts: React.FC = () => {
   const [layouts, setLayouts] = useState<Layout[]>([])
   const [loading, setLoading] = useState(true)
+  const darkMode = useDarkMode()
   const [showModal, setShowModal] = useState(false)
   const [editingLayout, setEditingLayout] = useState<Layout | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     structure: {
       sections: [
-        { name: 'North', rows: 5, seatsPerRow: 10, price: 100 },
-        { name: 'South', rows: 5, seatsPerRow: 10, price: 100 },
-        { name: 'East', rows: 3, seatsPerRow: 8, price: 150 },
-        { name: 'West', rows: 3, seatsPerRow: 8, price: 150 }
+        { name: 'North', rows: 5, seatsPerRow: 10 },
+        { name: 'South', rows: 5, seatsPerRow: 10 },
+        { name: 'East', rows: 3, seatsPerRow: 8 },
+        { name: 'West', rows: 3, seatsPerRow: 8 }
       ]
     }
   })
@@ -102,10 +104,10 @@ const Layouts: React.FC = () => {
       name: '',
       structure: {
         sections: [
-          { name: 'North', rows: 5, seatsPerRow: 10, price: 100 },
-          { name: 'South', rows: 5, seatsPerRow: 10, price: 100 },
-          { name: 'East', rows: 3, seatsPerRow: 8, price: 150 },
-          { name: 'West', rows: 3, seatsPerRow: 8, price: 150 }
+          { name: 'North', rows: 5, seatsPerRow: 10 },
+          { name: 'South', rows: 5, seatsPerRow: 10 },
+          { name: 'East', rows: 3, seatsPerRow: 8 },
+          { name: 'West', rows: 3, seatsPerRow: 8 }
         ]
       }
     })
@@ -130,10 +132,14 @@ const Layouts: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Theatre Layouts</h1>
-          <p className="text-gray-600 mt-2">Design and manage 360° seating arrangements</p>
+          <h1 className={`text-2xl sm:text-3xl font-semibold transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+            Theatre Layouts
+          </h1>
+          <p className={`mt-1 text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            Design and manage 360° seating arrangements
+          </p>
         </div>
         <button
           onClick={() => {
@@ -141,7 +147,7 @@ const Layouts: React.FC = () => {
             setEditingLayout(null)
             setShowModal(true)
           }}
-          className="bg-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-700 transition-colors flex items-center"
+          className="bg-slate-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-slate-800 transition-all duration-200 flex items-center shadow-sm"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Create Layout
@@ -150,9 +156,9 @@ const Layouts: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {layouts.map((layout) => (
-          <div key={layout.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div key={layout.id} className={`rounded-2xl shadow-sm border p-6 transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">{layout.name}</h3>
+              <h3 className={`text-lg font-semibold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{layout.name}</h3>
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleEdit(layout)}
@@ -172,9 +178,9 @@ const Layouts: React.FC = () => {
             <div className="space-y-2">
               {layout.structure.sections?.map((section: any, index: number) => (
                 <div key={index} className="flex justify-between text-sm">
-                  <span className="text-gray-600">{section.name}</span>
-                  <span className="text-gray-900">
-                    {section.rows}R × {section.seatsPerRow}S (₹{section.price})
+                  <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{section.name}</span>
+                  <span className={`transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {section.rows}R × {section.seatsPerRow}S
                   </span>
                 </div>
               ))}
@@ -189,7 +195,7 @@ const Layouts: React.FC = () => {
             </div>
 
             {/* Clean theater-style visual representation */}
-            <div className="mt-4 bg-gray-50 rounded-xl p-4 h-40">
+            <div className={`mt-4 rounded-xl p-4 h-40 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
               <div className="flex flex-col items-center justify-center h-full space-y-2">
                 
                 {/* North section indicator */}
@@ -221,7 +227,7 @@ const Layouts: React.FC = () => {
                     <div className="w-16 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm">
                       STAGE
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">Kalary</div>
+                    <div className="text-xs text-gray-400 mt-1">Kalari</div>
                   </div>
                   
                   {/* East */}
@@ -255,14 +261,14 @@ const Layouts: React.FC = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <div className={`rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto transition-colors duration-200 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className={`text-2xl font-bold mb-6 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               {editingLayout ? 'Edit Layout' : 'Create New Layout'}
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Layout Name
                 </label>
                 <input
@@ -270,30 +276,30 @@ const Layouts: React.FC = () => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}`}
                   placeholder="e.g., Main Hall Layout"
                 />
               </div>
 
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Sections</h3>
+                <h3 className={`text-lg font-medium mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Sections</h3>
                 <div className="space-y-4">
                   {formData.structure.sections.map((section, index) => (
-                    <div key={index} className="bg-gray-50 rounded-xl p-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div key={index} className={`rounded-xl p-4 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className={`block text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                             Section Name
                           </label>
                           <input
                             type="text"
                             value={section.name}
                             onChange={(e) => updateSection(index, 'name', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className={`block text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                             Rows
                           </label>
                           <input
@@ -301,11 +307,11 @@ const Layouts: React.FC = () => {
                             value={section.rows}
                             onChange={(e) => updateSection(index, 'rows', parseInt(e.target.value))}
                             min="1"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className={`block text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                             Seats/Row
                           </label>
                           <input
@@ -313,19 +319,7 @@ const Layouts: React.FC = () => {
                             value={section.seatsPerRow}
                             onChange={(e) => updateSection(index, 'seatsPerRow', parseInt(e.target.value))}
                             min="1"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Price (₹)
-                          </label>
-                          <input
-                            type="number"
-                            value={section.price}
-                            onChange={(e) => updateSection(index, 'price', parseInt(e.target.value))}
-                            min="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                           />
                         </div>
                       </div>
@@ -338,7 +332,7 @@ const Layouts: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-xl font-medium hover:bg-gray-300 transition-colors"
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors ${darkMode ? 'bg-gray-600 text-gray-200 hover:bg-gray-500' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
                 >
                   Cancel
                 </button>

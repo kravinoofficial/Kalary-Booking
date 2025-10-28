@@ -1,4 +1,4 @@
--- Kalary Seat Booking System Database Schema
+-- Kalari Seat Booking System Database Schema
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     price DECIMAL(10,2) NOT NULL,
     generated_by VARCHAR(255) NOT NULL,
     generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'REVOKED'))
+    status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'COMPLETED', 'REVOKED'))
 );
 
 -- Indexes for better performance

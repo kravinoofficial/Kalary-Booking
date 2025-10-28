@@ -5,10 +5,10 @@ import { QRCodeSVG as QRCode } from 'qrcode.react'
 import { 
   MagnifyingGlassIcon, 
   PrinterIcon, 
-  DocumentArrowDownIcon,
   XMarkIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 interface TicketWithDetails extends Ticket {
   show?: {
@@ -16,6 +16,7 @@ interface TicketWithDetails extends Ticket {
     date: string
     time: string
   }
+  booked_by: string
 }
 
 interface BookingGroup {
@@ -34,7 +35,7 @@ interface BookingGroup {
 }
 
 const Tickets: React.FC = () => {
-
+  const darkMode = useDarkMode()
   const [bookings, setBookings] = useState<BookingGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -52,51 +53,40 @@ const Tickets: React.FC = () => {
         .from('tickets')
         .select(`
           *,
-          show:shows(title, date, time),
-          booking:bookings(booked_by)
+          show:shows(title, date, time)
         `)
         .order('generated_at', { ascending: false })
 
       if (error) throw error
-      
+
       // Group tickets by booking_id
-      const groupedBookings = new Map<string, BookingGroup>()
+      const groupedBookings: { [key: string]: BookingGroup } = {}
       
-      data?.forEach((ticket: any) => {
-        const bookingId = ticket.booking_id
-        
-        if (!bookingId) {
-          console.warn('Ticket has no booking_id:', ticket)
-          return
-        }
-        
-        if (!groupedBookings.has(bookingId)) {
-          groupedBookings.set(bookingId, {
-            booking_id: bookingId,
+      data?.forEach((ticket: TicketWithDetails) => {
+        if (!groupedBookings[ticket.booking_id]) {
+          groupedBookings[ticket.booking_id] = {
+            booking_id: ticket.booking_id,
             show: ticket.show,
             tickets: [],
             total_price: 0,
             seat_codes: [],
             status: ticket.status,
             generated_at: ticket.generated_at,
-            booked_by: ticket.booking?.booked_by || 'Unknown'
-          })
+            booked_by: ticket.booked_by
+          }
         }
         
-        const booking = groupedBookings.get(bookingId)!
-        booking.tickets.push(ticket)
-        booking.total_price += ticket.price
-        if (!booking.seat_codes.includes(ticket.seat_code)) {
-          booking.seat_codes.push(ticket.seat_code)
-        }
+        groupedBookings[ticket.booking_id].tickets.push(ticket)
+        groupedBookings[ticket.booking_id].total_price += ticket.price
+        groupedBookings[ticket.booking_id].seat_codes.push(ticket.seat_code)
         
-        // If any ticket is revoked, mark the whole booking as revoked
+        // Update booking status based on ticket status
         if (ticket.status === 'REVOKED') {
-          booking.status = 'REVOKED'
+          groupedBookings[ticket.booking_id].status = 'REVOKED'
         }
       })
-      
-      setBookings(Array.from(groupedBookings.values()))
+
+      setBookings(Object.values(groupedBookings))
     } catch (error) {
       console.error('Error fetching bookings:', error)
     } finally {
@@ -107,273 +97,191 @@ const Tickets: React.FC = () => {
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = 
       booking.booking_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.seat_codes.some(seat => seat.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      booking.show?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.tickets.some(ticket => ticket.ticket_code.toLowerCase().includes(searchTerm.toLowerCase()))
+      booking.show?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.seat_codes.some(code => code.toLowerCase().includes(searchTerm.toLowerCase()))
     
-    const matchesStatus = statusFilter === 'all' || booking.status.toLowerCase() === statusFilter
-
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && booking.status === 'ACTIVE') ||
+      (statusFilter === 'completed' && booking.status === 'COMPLETED')
+    
     return matchesSearch && matchesStatus
   })
 
   const handlePrintBooking = (booking: BookingGroup) => {
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank', 'width=800,height=600')
+    // Use the same QR code API as a reliable source
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(booking.booking_id)}`
+    
+    const printWindow = window.open('', '_blank')
     if (!printWindow) return
 
-    const ticketHTML = `
+    const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Booking Ticket - ${booking.booking_id.slice(0, 8)}</title>
+          <title>Booking Ticket - ${booking.booking_id}</title>
           <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              margin: 0;
-              padding: 20px;
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px; 
               background: white;
             }
-            .ticket {
-              max-width: 500px;
+            .container {
+              max-width: 400px;
               margin: 0 auto;
-              border: 2px dashed #666;
-              border-radius: 8px;
-              padding: 30px;
               background: white;
+              padding: 20px;
+            }
+            .ticket {
+              border: 2px dashed #9ca3af;
+              padding: 24px;
+              border-radius: 12px;
+              background: #f9fafb;
             }
             .header {
               text-align: center;
-              margin-bottom: 30px;
+              margin-bottom: 24px;
             }
             .title {
               font-size: 24px;
               font-weight: bold;
-              color: #1e40af;
-              margin-bottom: 10px;
+              margin-bottom: 8px;
+              color: #111827;
             }
             .divider {
               height: 1px;
-              background: #ccc;
-              margin: 20px 0;
+              background: #6b7280;
+              margin: 12px 0;
             }
             .show-title {
               font-size: 18px;
               font-weight: 600;
-              color: #333;
+              color: #374151;
             }
             .info-section {
-              margin: 20px 0;
+              margin: 24px 0;
             }
             .info-row {
               display: flex;
               justify-content: space-between;
               margin: 12px 0;
-              align-items: flex-start;
+              font-size: 14px;
             }
             .info-label {
-              color: #666;
               font-weight: 500;
+              color: #6b7280;
             }
             .info-value {
-              font-weight: 600;
-              color: #333;
-              text-align: right;
-              flex: 1;
-              margin-left: 20px;
+              color: #111827;
+              font-weight: 400;
             }
             .seats-section {
-              margin: 15px 0;
+              margin: 16px 0;
+            }
+            .seats-label {
+              font-weight: 500;
+              margin-bottom: 8px;
+              color: #6b7280;
+              font-size: 14px;
             }
             .seats-box {
-              background: #f8f9fa;
-              border: 1px solid #e9ecef;
-              border-radius: 6px;
+              border: 1px solid #d1d5db;
               padding: 12px;
               text-align: center;
-              font-weight: 600;
-              font-size: 14px;
-              margin-top: 8px;
+              font-weight: bold;
+              background: #e5e7eb;
+              border-radius: 6px;
+              color: #111827;
             }
             .qr-section {
               text-align: center;
-              margin: 30px 0;
+              margin: 24px 0;
+            }
+            .qr-code {
+              width: 120px;
+              height: 120px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 4px;
             }
             .footer {
               text-align: center;
               font-size: 12px;
-              color: #666;
-              margin-top: 30px;
+              color: #9ca3af;
+              margin-top: 16px;
             }
-            .ticket-codes {
-              background: #f8f9fa;
-              border: 1px solid #e9ecef;
-              border-radius: 6px;
-              padding: 15px;
-              margin: 15px 0;
-            }
-            .ticket-codes-title {
-              font-weight: 600;
-              text-align: center;
-              margin-bottom: 10px;
-              color: #333;
-            }
-            .ticket-code {
-              font-family: 'Courier New', monospace;
-              font-size: 11px;
+            .footer div {
               margin: 4px 0;
-              color: #333;
             }
             @media print {
-              body { margin: 0; padding: 15px; }
-              .ticket { max-width: none; }
+              body { 
+                margin: 0; 
+                padding: 10px;
+                background: white;
+              }
+              .container {
+                max-width: none;
+              }
             }
           </style>
         </head>
         <body>
-          <div class="ticket">
-            <div class="header">
-              <div class="title">KALARY BOOKING</div>
-              <div class="divider"></div>
-              <div class="show-title">${booking.show?.title || 'N/A'}</div>
-            </div>
-            
-            <div class="info-section">
-              <div class="info-row">
-                <span class="info-label">Date:</span>
-                <span class="info-value">${booking.show?.date ? format(new Date(booking.show.date), 'MMM dd, yyyy') : 'N/A'}</span>
+          <div class="container">
+            <div class="ticket">
+              <div class="header">
+                <div class="title">KALARI BOOKING</div>
+                <div class="divider"></div>
+                <div class="show-title">${booking.show?.title || 'N/A'}</div>
               </div>
-              <div class="info-row">
-                <span class="info-label">Time:</span>
-                <span class="info-value">${booking.show?.time || 'N/A'}</span>
+              
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-label">Date:</span>
+                  <span class="info-value">${booking.show?.date ? format(new Date(booking.show.date), 'MMM dd, yyyy') : 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Time:</span>
+                  <span class="info-value">${booking.show?.time || 'N/A'}</span>
+                </div>
+                <div class="seats-section">
+                  <div class="seats-label">Seats:</div>
+                  <div class="seats-box">${booking.seat_codes.join(', ')}</div>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Quantity:</span>
+                  <span class="info-value">${booking.tickets.length} ticket(s)</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Total Price:</span>
+                  <span class="info-value">₹${booking.total_price}</span>
+                </div>
               </div>
-              <div class="seats-section">
-                <div class="info-label">Seats:</div>
-                <div class="seats-box">${booking.seat_codes.join(', ')}</div>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Quantity:</span>
-                <span class="info-value">${booking.tickets.length} ticket(s)</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Total Price:</span>
-                <span class="info-value">₹${booking.total_price}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Booked By:</span>
-                <span class="info-value">${booking.booked_by}</span>
-              </div>
-            </div>
 
-            <div class="qr-section">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(JSON.stringify({
-                booking_id: booking.booking_id,
-                show_id: booking.tickets[0]?.show_id,
-                seat_codes: booking.seat_codes,
-                ticket_codes: booking.tickets.map(t => t.ticket_code)
-              }))}" alt="QR Code" style="width: 120px; height: 120px; margin: 0 auto; display: block;" />
-            </div>
+              <div class="qr-section">
+                <img src="${qrCodeUrl}" alt="QR Code" class="qr-code" style="width: 120px; height: 120px;" />
+              </div>
 
-            <div class="ticket-codes">
-              <div class="ticket-codes-title">Ticket Codes:</div>
-              ${booking.tickets.map((ticket, index) => 
-                `<div class="ticket-code">${index + 1}. ${ticket.ticket_code}</div>`
-              ).join('')}
-            </div>
-
-            <div class="footer">
-              <div>Booking ID: ${booking.booking_id.slice(0, 8)}...</div>
-              <div>Generated: ${format(new Date(booking.generated_at), 'MMM dd, yyyy HH:mm')}</div>
+              <div class="footer">
+                <div>Booking ID: ${booking.booking_id.slice(0, 8)}...</div>
+                <div>Generated: ${format(new Date(booking.generated_at), 'MMM dd, yyyy HH:mm')}</div>
+              </div>
             </div>
           </div>
+          
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 1000);
+            };
+          </script>
         </body>
       </html>
     `
 
-    printWindow.document.write(ticketHTML)
+    printWindow.document.write(printContent)
     printWindow.document.close()
-    
-    // Wait for content to load, then print
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-        printWindow.close()
-      }, 250)
-    }
   }
-
-
-
-  const BookingTicketPreview: React.FC<{ booking: BookingGroup }> = ({ booking }) => (
-    <div className="ticket-page bg-white p-4 border-2 border-dashed border-gray-300 rounded-lg print:border-black print:p-8 print:m-0 print:rounded-none print:max-w-none print:w-full print:h-full print:flex print:flex-col print:justify-center">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-blue-900 mb-2">KALARY BOOKING</h1>
-        <div className="w-full h-px bg-gray-300 mb-4"></div>
-        <h2 className="text-lg font-semibold text-gray-900">{booking.show?.title}</h2>
-      </div>
-
-      <div className="space-y-4 mb-6">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Date:</span>
-          <span className="font-medium">
-            {booking.show?.date ? format(new Date(booking.show.date), 'MMM dd, yyyy') : 'N/A'}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">Time:</span>
-          <span className="font-medium">{booking.show?.time}</span>
-        </div>
-        <div className="space-y-1">
-          <div className="text-gray-600">Seats:</div>
-          <div className="font-medium text-sm text-center bg-gray-50 p-2 rounded border">
-            {booking.seat_codes.join(', ')}
-          </div>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">Quantity:</span>
-          <span className="font-medium">{booking.tickets.length} ticket(s)</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">Total Price:</span>
-          <span className="font-medium text-lg">₹{booking.total_price}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">Booked By:</span>
-          <span className="font-medium">{booking.booked_by}</span>
-        </div>
-      </div>
-
-      <div className="text-center mb-4">
-        <QRCode 
-          value={JSON.stringify({
-            booking_id: booking.booking_id,
-            show_id: booking.tickets[0]?.show_id,
-            seat_codes: booking.seat_codes,
-            ticket_codes: booking.tickets.map(t => t.ticket_code)
-          })}
-          size={120}
-          className="mx-auto"
-        />
-      </div>
-
-      <div className="text-center text-xs text-gray-500 space-y-2">
-        <div className="font-medium">Booking ID: {booking.booking_id.slice(0, 8)}...</div>
-        <div className="bg-gray-50 p-3 rounded border space-y-1 text-left">
-          <div className="font-medium text-center mb-2">Ticket Codes:</div>
-          {booking.tickets.map((ticket, index) => (
-            <div key={ticket.id} className="font-mono text-xs">
-              {index + 1}. {ticket.ticket_code}
-            </div>
-          ))}
-        </div>
-        <div className="font-medium">Generated: {format(new Date(booking.generated_at), 'MMM dd, yyyy HH:mm')}</div>
-        {booking.status === 'REVOKED' && (
-          <div className="text-red-600 font-bold text-lg mt-4 transform rotate-12">
-            CANCELLED
-          </div>
-        )}
-      </div>
-    </div>
-  )
 
   if (loading) {
     return (
@@ -385,23 +293,29 @@ const Tickets: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Ticket History</h1>
-        <p className="text-gray-600 mt-2">View, print, and manage all generated tickets</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className={`text-2xl sm:text-3xl font-semibold transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+            Ticket History
+          </h1>
+          <p className={`mt-1 text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            View, print, and manage all generated tickets
+          </p>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+      <div className={`rounded-2xl shadow-sm border p-4 sm:p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
               <input
                 type="text"
                 placeholder="Search by ticket code, seat, or show..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 ${darkMode ? 'bg-slate-800/50 border-slate-700 text-slate-100 placeholder-slate-400' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-500'}`}
               />
             </div>
           </div>
@@ -409,173 +323,255 @@ const Tickets: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className={`px-4 py-3 border rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 ${darkMode ? 'bg-slate-800/50 border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
-              <option value="revoked">Revoked</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Bookings Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Booking ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Show
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Seats
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Generated
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBookings.map((booking) => (
-                <tr key={booking.booking_id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-mono text-gray-900">
-                      {booking.booking_id.slice(0, 8)}...
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {booking.booked_by}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{booking.show?.title}</div>
-                    <div className="text-sm text-gray-500">
-                      {booking.show?.date ? format(new Date(booking.show.date), 'MMM dd, yyyy') : 'N/A'} at {booking.show?.time}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {booking.seat_codes.length > 3 
-                        ? `${booking.seat_codes.slice(0, 3).join(', ')}...` 
-                        : booking.seat_codes.join(', ')
-                      }
-                    </div>
-                    {booking.seat_codes.length > 3 && (
-                      <div className="text-xs text-gray-500">
-                        +{booking.seat_codes.length - 3} more
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {booking.tickets.length} ticket(s)
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">₹{booking.total_price}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      booking.status === 'ACTIVE' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {booking.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {format(new Date(booking.generated_at), 'MMM dd, yyyy')}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {format(new Date(booking.generated_at), 'HH:mm')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => {
-                          setSelectedBooking(booking)
-                          setShowPreview(true)
-                        }}
-                        className="text-primary-600 hover:text-primary-900"
-                        title="Preview"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                      {booking.status === 'ACTIVE' && (
-                        <button
-                          onClick={() => handlePrintBooking(booking)}
-                          className="text-green-600 hover:text-green-900"
-                          title="Print"
-                        >
-                          <PrinterIcon className="h-5 w-5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+      <div className={`rounded-2xl shadow-sm border overflow-hidden transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <div className="px-3 sm:px-0">
+            <table className={`min-w-full divide-y transition-colors duration-200 ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
+              <thead className={`transition-colors duration-200 ${darkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                <tr>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Booking ID
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Show
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Seats
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Quantity
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Total Price
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Status
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Generated
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className={`divide-y transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 divide-slate-800' : 'bg-white divide-slate-200'}`}>
+                {filteredBookings.map((booking) => (
+                  <tr key={booking.booking_id} className={`transition-colors duration-200 ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm font-mono transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {booking.booking_id.slice(0, 8)}...
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{booking.show?.title}</div>
+                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {booking.show?.date ? format(new Date(booking.show.date), 'MMM dd, yyyy') : 'N/A'}
+                      </div>
+                      <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {booking.show?.time}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {booking.seat_codes.length > 3 
+                          ? `${booking.seat_codes.slice(0, 3).join(', ')}...` 
+                          : booking.seat_codes.join(', ')
+                        }
+                      </div>
+                      {booking.seat_codes.length > 3 && (
+                        <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          +{booking.seat_codes.length - 3} more
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {booking.tickets.length} ticket(s)
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>₹{booking.total_price}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex justify-start">
+                        <span className={`inline-flex items-center justify-center px-3 py-1 text-xs font-semibold rounded-full min-w-[90px] ${
+                          booking.status === 'ACTIVE' 
+                            ? darkMode 
+                              ? 'bg-green-900/20 text-green-400 border border-green-800'
+                              : 'bg-green-100 text-green-800'
+                            : booking.status === 'COMPLETED'
+                              ? darkMode
+                                ? 'bg-blue-900/20 text-blue-400 border border-blue-800'
+                                : 'bg-blue-100 text-blue-800'
+                              : darkMode
+                                ? 'bg-red-900/20 text-red-400 border border-red-800'
+                                : 'bg-red-100 text-red-800'
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {format(new Date(booking.generated_at), 'MMM dd, yyyy')}
+                      </div>
+                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {format(new Date(booking.generated_at), 'HH:mm')}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedBooking(booking)
+                            setShowPreview(true)
+                          }}
+                          className="text-primary-600 hover:text-primary-900"
+                          title="Preview"
+                        >
+                          <EyeIcon className="h-5 w-5" />
+                        </button>
+                        {(booking.status === 'ACTIVE' || booking.status === 'COMPLETED') && (
+                          <button
+                            onClick={() => handlePrintBooking(booking)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Print"
+                          >
+                            <PrinterIcon className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-
-
       {/* Preview Modal */}
       {showPreview && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 no-print p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col">
-            {/* Fixed Header */}
-            <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Booking Ticket Preview</h3>
-              <button
-                onClick={() => setShowPreview(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <BookingTicketPreview booking={selectedBooking} />
-            </div>
-            
-            {/* Fixed Footer */}
-            <div className="flex space-x-4 p-6 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  setShowPreview(false)
-                  handlePrintBooking(selectedBooking)
-                }}
-                className="flex-1 bg-primary-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-primary-700 transition-colors flex items-center justify-center"
-              >
-                <PrinterIcon className="h-5 w-5 mr-2" />
-                Print Booking
-              </button>
-              <button
-                onClick={() => setShowPreview(false)}
-                className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-xl font-medium hover:bg-gray-300 transition-colors"
-              >
-                Close
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className={`max-w-md w-full rounded-2xl shadow-xl transition-colors duration-200 ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'}`}>
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h3 className={`text-lg font-semibold transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                  Ticket Preview
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowPreview(false)
+                    setSelectedBooking(null)
+                  }}
+                  className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-300 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Ticket Content */}
+              <div className={`border-2 border-dashed p-4 rounded-xl transition-colors duration-200 ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-300 bg-slate-50'}`}>
+                <div className="text-center mb-4">
+                  <h4 className={`text-xl font-bold transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                    KALARI BOOKING
+                  </h4>
+                  <div className={`h-px my-2 transition-colors duration-200 ${darkMode ? 'bg-slate-700' : 'bg-slate-300'}`}></div>
+                  <h5 className={`text-lg font-semibold transition-colors duration-200 ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                    {selectedBooking.show?.title || 'N/A'}
+                  </h5>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                  <div className="flex justify-between">
+                    <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Date:</span>
+                    <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                      {selectedBooking.show?.date ? format(new Date(selectedBooking.show.date), 'MMM dd, yyyy') : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Time:</span>
+                    <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                      {selectedBooking.show?.time || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className={`font-medium block mb-1 transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Seats:</span>
+                    <div className={`border p-2 rounded text-center font-bold transition-colors duration-200 ${darkMode ? 'border-slate-600 bg-slate-700 text-slate-100' : 'border-slate-400 bg-slate-100 text-slate-900'}`}>
+                      {selectedBooking.seat_codes.join(', ')}
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Quantity:</span>
+                    <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                      {selectedBooking.tickets.length} ticket(s)
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Total Price:</span>
+                    <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                      ₹{selectedBooking.total_price}
+                    </span>
+                  </div>
+                </div>
+
+                {/* QR Code */}
+                <div className="text-center mb-4">
+                  <QRCode
+                    value={selectedBooking.booking_id}
+                    size={120}
+                    bgColor={darkMode ? '#1e293b' : '#ffffff'}
+                    fgColor={darkMode ? '#f1f5f9' : '#000000'}
+                    className="mx-auto"
+                  />
+                </div>
+
+                <div className="text-center text-xs space-y-1">
+                  <div className={`transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Booking ID: {selectedBooking.booking_id.slice(0, 8)}...
+                  </div>
+                  <div className={`transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Generated: {format(new Date(selectedBooking.generated_at), 'MMM dd, yyyy HH:mm')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    handlePrintBooking(selectedBooking)
+                    setShowPreview(false)
+                    setSelectedBooking(null)
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors duration-200 ${darkMode ? 'bg-green-900/20 text-green-400 border border-green-800 hover:bg-green-900/30' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                >
+                  <PrinterIcon className="h-4 w-4" />
+                  Print
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPreview(false)
+                    setSelectedBooking(null)
+                  }}
+                  className={`flex-1 px-4 py-2 rounded-xl font-medium transition-colors duration-200 ${darkMode ? 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-# Kalary Booking System - Setup Guide
+# Kalari Booking System - Setup Guide
 
 ## Step 1: Supabase Project Setup
 
@@ -6,7 +6,7 @@
 1. Go to [supabase.com](https://supabase.com)
 2. Click "New Project"
 3. Choose organization and enter project details:
-   - Name: `kalary-booking`
+   - Name: `Kalari-booking`
    - Database Password: (choose a strong password)
    - Region: (choose closest to your location)
 
@@ -128,7 +128,7 @@ npm run build
 
 **Self-hosted:**
 1. Upload `build` folder to web server
-2. Configure web server to serve Kalary Booking
+2. Configure web server to serve Kalari Booking
 3. Set environment variables on server
 
 ### 6.3 Update Supabase Settings
@@ -181,4 +181,4 @@ After setup, you can:
 4. Add email notifications
 5. Create mobile-responsive improvements
 
-Your Kalary Booking System is now ready to use! 🎭
+Your Kalari Booking System is now ready to use! 🎭

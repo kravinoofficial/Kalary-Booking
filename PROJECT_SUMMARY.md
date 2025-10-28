@@ -1,8 +1,8 @@
-# Kalary Seat Booking System - Project Summary
+# Kalari Seat Booking System - Project Summary
 
 ## 🎯 Project Overview
 
-Successfully created a complete **Kalary Seat Booking System** - a React + Supabase web application designed for managing martial arts/cultural show bookings from a single admin counter.
+Successfully created a complete **Kalari Seat Booking System** - a React + Supabase web application designed for managing martial arts/cultural show bookings from a single admin counter.
 
 ## ✅ Completed Features
 
@@ -81,7 +81,7 @@ Successfully created a complete **Kalary Seat Booking System** - a React + Supab
 ## 📁 Project Structure
 
 ```
-kalary-booking/
+Kalari-booking/
 ├── src/
 │   ├── components/
 │   │   └── Layout.tsx          # Main app layout
@@ -137,7 +137,7 @@ kalary-booking/
 ## 🎨 Design Features
 
 ### **UI/UX**
-- **Dark blue & gold theme** (professional Kalary branding)
+- **Dark blue & gold theme** (professional Kalari branding)
 - **Responsive design** (desktop-first, mobile-friendly)
 - **Smooth animations** with Framer Motion
 - **Intuitive navigation** with clear visual hierarchy
@@ -207,4 +207,4 @@ The system is fully functional and ready for production use. All core features a
 **Code Quality**: Production-ready with TypeScript safety
 **Documentation**: Comprehensive setup and usage guides
 
-Your Kalary Seat Booking System is ready to manage bookings professionally! 🎭✨
+Your Kalari Seat Booking System is ready to manage bookings professionally! 🎭✨
