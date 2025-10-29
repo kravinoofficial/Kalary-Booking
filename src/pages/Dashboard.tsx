@@ -726,13 +726,13 @@ const Dashboard: React.FC = () => {
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   metrics.dailyGrowth >= 0 
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' 
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
                 }`}>
                   {metrics.dailyGrowth >= 0 ? 'Trending Up' : 'Trending Down'}
                 </span>
               </div>
-              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                 {metrics.dailyGrowth >= 0 
                   ? `Revenue is up ${Math.abs(metrics.dailyGrowth).toFixed(1)}% from yesterday. Keep up the momentum!`
                   : `Revenue is down ${Math.abs(metrics.dailyGrowth).toFixed(1)}% from yesterday. Consider promotional strategies.`
@@ -749,13 +749,13 @@ const Dashboard: React.FC = () => {
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   metrics.todayBookings > 0 
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' 
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700/60 dark:text-gray-300'
                 }`}>
                   {metrics.todayBookings > 0 ? 'Active' : 'Quiet'}
                 </span>
               </div>
-              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                 {metrics.todayBookings > 0 
                   ? `${metrics.todayBookings} tickets sold today. Average price: ₹${(metrics.todayRevenue / metrics.todayBookings).toFixed(0)}`
                   : 'No bookings today yet. Consider marketing campaigns or check upcoming shows.'
@@ -770,13 +770,13 @@ const Dashboard: React.FC = () => {
                 <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Quick Actions</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                <button className={`px-3 py-1 text-xs border rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
                   View Reports
                 </button>
-                <button className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                <button className={`px-3 py-1 text-xs border rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
                   Add Show
                 </button>
-                <button className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                <button className={`px-3 py-1 text-xs border rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
                   Export Data
                 </button>
               </div>

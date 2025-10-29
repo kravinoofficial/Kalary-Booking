@@ -17,7 +17,8 @@ import {
   MoonIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline'
 
 const Layout: React.FC = () => {
@@ -43,6 +44,14 @@ const Layout: React.FC = () => {
   })
   const [showProfile, setShowProfile] = React.useState(false)
   const [showNotifications, setShowNotifications] = React.useState(false)
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false)
+  const [passwordForm, setPasswordForm] = React.useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [passwordError, setPasswordError] = React.useState('')
+  const [passwordLoading, setPasswordLoading] = React.useState(false)
 
   // Apply dark mode class to document immediately on mount
   React.useEffect(() => {
@@ -87,6 +96,44 @@ const Layout: React.FC = () => {
       window.location.href = '/login'
     } finally {
       setSigningOut(false)
+    }
+  }
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPasswordError('')
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+    
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters')
+      return
+    }
+    
+    try {
+      setPasswordLoading(true)
+      
+      // Import supabase client
+      const { supabase } = await import('../lib/supabase')
+      
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword
+      })
+      
+      if (error) throw error
+      
+      // Success
+      setShowPasswordModal(false)
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      alert('Password updated successfully!')
+      
+    } catch (error: any) {
+      setPasswordError(error.message || 'Failed to update password')
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -477,11 +524,21 @@ const Layout: React.FC = () => {
                 </button>
 
                 {showProfile && (
-                  <div className={`absolute right-0 mt-2 w-36 rounded-xl shadow-lg border py-2 z-[60] pointer-events-auto transition-colors duration-200 backdrop-blur-sm ${darkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
+                  <div className={`absolute right-0 mt-2 w-44 rounded-xl shadow-lg border py-2 z-[60] pointer-events-auto transition-colors duration-200 backdrop-blur-sm ${darkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
+                    <button
+                      onClick={() => {
+                        setShowProfile(false)
+                        setShowPasswordModal(true)
+                      }}
+                      className={`flex items-center w-full text-left px-4 py-3 text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      <KeyIcon className="h-4 w-4 mr-2" />
+                      Change Password
+                    </button>
                     <button
                       onClick={handleSignOut}
                       disabled={signingOut}
-                      className={`block w-full text-left px-4 py-3 text-sm font-medium transition-colors duration-200 ${
+                      className={`flex items-center w-full text-left px-4 py-3 text-sm font-medium transition-colors duration-200 ${
                         signingOut 
                           ? 'opacity-50 cursor-not-allowed' 
                           : darkMode 
@@ -489,6 +546,7 @@ const Layout: React.FC = () => {
                             : 'text-slate-700 hover:bg-slate-100'
                       }`}
                     >
+                      <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
                       {signingOut ? 'Signing Out...' : 'Sign Out'}
                     </button>
                   </div>
@@ -505,6 +563,88 @@ const Layout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`rounded-2xl p-6 max-w-md w-full transition-colors duration-200 shadow-xl ${darkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className={`text-xl font-semibold transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                Change Password
+              </h2>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false)
+                  setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                  setPasswordError('')
+                }}
+                className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  required
+                  minLength={6}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                  placeholder="Enter new password"
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-2 transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  required
+                  minLength={6}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                  placeholder="Confirm new password"
+                />
+              </div>
+
+              {passwordError && (
+                <div className="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                  {passwordError}
+                </div>
+              )}
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false)
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                    setPasswordError('')
+                  }}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors duration-200 ${darkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors duration-200 ${passwordLoading ? 'opacity-50 cursor-not-allowed' : ''} bg-blue-600 text-white hover:bg-blue-700`}
+                >
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Click outside to close dropdowns */}
       {showProfile && (
