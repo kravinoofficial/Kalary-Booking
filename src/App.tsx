@@ -9,6 +9,7 @@ import Layouts from './pages/Layouts'
 import Booking from './pages/Booking'
 import Tickets from './pages/Tickets'
 import Reports from './pages/Reports'
+import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -66,6 +67,7 @@ function App() {
             <Route path="booking" element={<Booking />} />
             <Route path="tickets" element={<Tickets />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

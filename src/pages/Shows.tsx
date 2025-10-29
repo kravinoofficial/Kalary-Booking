@@ -3,7 +3,7 @@ import { supabase, Show, Layout } from '../lib/supabase'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { format } from 'date-fns'
 import { useDarkMode } from '../hooks/useDarkMode'
-import { logShowDeletion } from '../utils/activityLogger'
+import { logShowDeletion, logShowCreation, logShowUpdate } from '../utils/activityLogger'
 
 const Shows: React.FC = () => {
   const [shows, setShows] = useState<Show[]>([])
@@ -18,8 +18,7 @@ const Shows: React.FC = () => {
     time: '',
     price: '',
     description: '',
-    layout_id: '',
-    active: true
+    layout_id: ''
   })
 
   useEffect(() => {
@@ -99,7 +98,7 @@ const Shows: React.FC = () => {
           } else {
             console.log(`Successfully updated tickets for show ${show.title} to COMPLETED`)
           }
-        } 
+        }
         // Check if show has started (current time is past show start time but less than 30 minutes)
         else if (now > showDateTime && now <= thirtyMinutesAfterShow && show.status === 'ACTIVE') {
           console.log(`Updating show ${show.title} from ${show.status} to SHOW_STARTED`)
@@ -142,7 +141,7 @@ const Shows: React.FC = () => {
           } else {
             console.log(`Successfully updated tickets for HOUSE_FULL show ${show.title} to COMPLETED`)
           }
-        } 
+        }
         // Check if house is full for ACTIVE shows
         else if (show.status === 'ACTIVE') {
           // Check if house is full
@@ -218,23 +217,74 @@ const Shows: React.FC = () => {
         time: formData.time,
         price: parseFloat(formData.price),
         description: formData.description,
-        layout_id: formData.layout_id,
-        active: formData.active
+        layout_id: formData.layout_id
       }
 
+      // Get current user email
+      const { data: { user } } = await supabase.auth.getUser()
+      const userEmail = user?.email || 'unknown'
+
       if (editingShow) {
+        // Capture changes before update
+        const changes: any = {}
+        if (editingShow.title !== showData.title) {
+          changes.title = { from: editingShow.title, to: showData.title }
+        }
+        if (editingShow.date !== showData.date) {
+          changes.date = { from: editingShow.date, to: showData.date }
+        }
+        if (editingShow.time !== showData.time) {
+          changes.time = { from: editingShow.time, to: showData.time }
+        }
+        if (editingShow.price !== showData.price) {
+          changes.price = { from: editingShow.price, to: showData.price }
+        }
+        if (editingShow.description !== showData.description) {
+          changes.description = { from: editingShow.description || '', to: showData.description }
+        }
+
         const { error } = await supabase
           .from('shows')
           .update(showData)
           .eq('id', editingShow.id)
 
         if (error) throw error
+
+        // Log the show update with changes
+        await logShowUpdate(
+          editingShow.id,
+          showData.title,
+          userEmail,
+          {
+            changes: changes,
+            fieldsChanged: Object.keys(changes),
+            updated_at: new Date().toISOString()
+          }
+        )
       } else {
-        const { error } = await supabase
+        const { data: newShow, error } = await supabase
           .from('shows')
           .insert([showData])
+          .select()
+          .single()
 
         if (error) throw error
+
+        // Log the show creation
+        if (newShow) {
+          await logShowCreation(
+            newShow.id,
+            showData.title,
+            userEmail,
+            {
+              date: showData.date,
+              time: showData.time,
+              price: showData.price,
+              description: showData.description,
+              created_at: new Date().toISOString()
+            }
+          )
+        }
       }
 
       setShowModal(false)
@@ -254,8 +304,7 @@ const Shows: React.FC = () => {
       time: show.time,
       price: show.price.toString(),
       description: show.description || '',
-      layout_id: show.layout_id,
-      active: show.active
+      layout_id: show.layout_id
     })
     setShowModal(true)
   }
@@ -279,10 +328,14 @@ const Shows: React.FC = () => {
 
         // Log the deletion
         if (showToDelete) {
+          // Get current user email
+          const { data: { user } } = await supabase.auth.getUser()
+          const userEmail = user?.email || 'unknown'
+
           await logShowDeletion(
             id,
             showToDelete.title,
-            'admin', // In a real app, this would be the current user
+            userEmail,
             {
               date: showToDelete.date,
               time: showToDelete.time,
@@ -309,8 +362,7 @@ const Shows: React.FC = () => {
       time: '',
       price: '',
       description: '',
-      layout_id: '',
-      active: true
+      layout_id: ''
     })
   }
 
@@ -353,96 +405,102 @@ const Shows: React.FC = () => {
         <div className="overflow-x-auto -mx-3 sm:mx-0">
           <div className="px-3 sm:px-0">
             <table className={`min-w-full divide-y transition-colors duration-200 ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-            <thead className={`transition-colors duration-200 ${darkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-              <tr>
-                <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Show Details
-                </th>
-                <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Date & Time
-                </th>
-                <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Price
-                </th>
-                <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Layout
-                </th>
-                <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Status
-                </th>
-                <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 divide-slate-800' : 'bg-white divide-slate-200'}`}>
-              {shows.map((show) => (
-                <tr key={show.id} className={`transition-colors duration-200 ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{show.title}</div>
-                      {show.description && (
-                        <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{show.description}</div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                      {format(new Date(show.date), 'MMM dd, yyyy')}
-                    </div>
-                    <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{show.time}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>₹{show.price}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{show.layout?.name || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex justify-start">
-                      <span className={`inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-full min-w-[90px] ${show.status === 'ACTIVE'
-                        ? darkMode
-                          ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50'
-                          : 'bg-emerald-100 text-emerald-800'
-                        : show.status === 'HOUSE_FULL'
-                          ? darkMode
-                            ? 'bg-amber-900/30 text-amber-400 border border-amber-800/50'
-                            : 'bg-amber-100 text-amber-800'
-                          : show.status === 'SHOW_STARTED'
-                            ? darkMode
-                              ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50'
-                              : 'bg-blue-100 text-blue-800'
-                            : darkMode
-                              ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                              : 'bg-slate-100 text-slate-700'
-                        }`}>
-                        {show.status === 'ACTIVE' ? 'Active' :
-                          show.status === 'HOUSE_FULL' ? 'House Full' :
-                          show.status === 'SHOW_STARTED' ? 'Show Started' :
-                            'Show Done'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(show)}
-                        className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(show.id)}
-                        className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+              <thead className={`transition-colors duration-200 ${darkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                <tr>
+                  <th className={`w-1/4 px-4 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Show Details
+                  </th>
+                  <th className={`w-1/6 px-4 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Date & Time
+                  </th>
+                  <th className={`w-1/12 px-4 py-4 text-center text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Price
+                  </th>
+                  <th className={`w-1/6 px-4 py-4 text-center text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Layout
+                  </th>
+                  <th className={`w-14 pl-1 pr-0 py-4 text-center text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Status
+                  </th>
+                  <th className={`w-12 pl-0 pr-1 py-4 text-center text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className={`divide-y transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 divide-slate-800' : 'bg-white divide-slate-200'}`}>
+                {shows.map((show) => (
+                  <tr key={show.id} className={`transition-colors duration-200 ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                    <td className="px-4 py-4">
+                      <div>
+                        <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{show.title}</div>
+                        {show.description && (
+                          <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{show.description}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {format(new Date(show.date), 'MMM dd, yyyy')}
+                      </div>
+                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{show.time}</div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-center">
+                      <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>₹{show.price}</div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-center">
+                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{show.layout?.name || 'N/A'}</div>
+                    </td>
+                    <td className="pl-1 pr-0 py-4 whitespace-nowrap text-center">
+                      <div className="flex justify-center">
+                        <span className={`inline-flex items-center justify-center px-1 py-0.5 text-xs font-medium rounded-full min-w-[60px] ${show.status === 'ACTIVE'
+                          ? darkMode
+                            ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50'
+                            : 'bg-emerald-100 text-emerald-800'
+                          : show.status === 'HOUSE_FULL'
+                            ? darkMode
+                              ? 'bg-amber-900/30 text-amber-400 border border-amber-800/50'
+                              : 'bg-amber-100 text-amber-800'
+                            : show.status === 'SHOW_STARTED'
+                              ? darkMode
+                                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50'
+                                : 'bg-blue-100 text-blue-800'
+                              : darkMode
+                                ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                                : 'bg-slate-100 text-slate-700'
+                          }`}>
+                          {show.status === 'ACTIVE' ? 'Active' :
+                            show.status === 'HOUSE_FULL' ? 'House Full' :
+                              show.status === 'SHOW_STARTED' ? 'Show Started' :
+                                'Show Done'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="pl-0 pr-1 py-4 whitespace-nowrap text-sm font-medium text-center">
+                      {show.status === 'SHOW_DONE' ? (
+                        <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Done
+                        </span>
+                      ) : (
+                        <div className="flex justify-center space-x-2">
+                          <button
+                            onClick={() => handleEdit(show)}
+                            className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(show.id)}
+                            className={`p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -467,8 +525,8 @@ const Shows: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-white border-gray-300 text-gray-900'
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900'
                     }`}
                 />
               </div>
@@ -485,8 +543,8 @@ const Shows: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     required
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
                       }`}
                   />
                 </div>
@@ -501,8 +559,8 @@ const Shows: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     required
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
                       }`}
                   />
                 </div>
@@ -521,8 +579,8 @@ const Shows: React.FC = () => {
                   min="0"
                   step="0.01"
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
                     }`}
                 />
               </div>
@@ -537,8 +595,8 @@ const Shows: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, layout_id: e.target.value })}
                   required
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
                     }`}
                 >
                   <option value="">Select a layout</option>
@@ -560,33 +618,21 @@ const Shows: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-white border-gray-300 text-gray-900'
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900'
                     }`}
                 />
               </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="active"
-                  checked={formData.active}
-                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                  className={`h-4 w-4 text-primary-600 focus:ring-primary-500 rounded transition-colors duration-200 ${darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
-                    }`}
-                />
-                <label htmlFor="active" className={`ml-2 block text-sm transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Active (available for booking)
-                </label>
-              </div>
+
 
               <div className="flex space-x-4 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
                   className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors ${darkMode
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                     }`}
                 >
                   Cancel

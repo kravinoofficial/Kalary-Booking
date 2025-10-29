@@ -389,10 +389,14 @@ const Booking: React.FC = () => {
       if (ticketError) throw ticketError
 
       // Log the booking activity
+      // Get current user email
+      const { data: { user } } = await supabase.auth.getUser()
+      const userEmail = user?.email || 'unknown'
+      
       await logBookingCreation(
         booking.id,
         selectedShow.title,
-        'admin', // In a real app, this would be the current user
+        userEmail,
         {
           seat_codes: selectedSeats,
           seat_count: selectedSeats.length,

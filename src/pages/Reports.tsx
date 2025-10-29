@@ -7,6 +7,7 @@ import {
   CalendarIcon
 } from '@heroicons/react/24/outline'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { logActivity } from '../utils/activityLogger'
 
 interface BookingReport {
   booking_id: string
@@ -139,7 +140,7 @@ const Reports: React.FC = () => {
     }
   }
 
-  const generateCSV = () => {
+  const generateCSV = async () => {
     if (!selectedShow || bookingData.length === 0) return
 
     const headers = [
@@ -184,6 +185,31 @@ const Reports: React.FC = () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+
+    // Log the report export
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const userEmail = user?.email || 'unknown'
+
+      await logActivity({
+        action: 'EXPORT',
+        entityType: 'REPORT',
+        entityId: selectedShow.id,
+        entityName: `Booking Report - ${selectedShow.title}`,
+        details: {
+          format: 'CSV',
+          showTitle: selectedShow.title,
+          showDate: selectedShow.date,
+          totalBookings: bookingData.length,
+          totalTickets: summary.totalTickets,
+          totalRevenue: summary.totalRevenue,
+          exported_at: new Date().toISOString()
+        },
+        performedBy: userEmail
+      })
+    } catch (error) {
+      console.error('Error logging report export:', error)
+    }
   }
 
   return (
@@ -260,7 +286,7 @@ const Reports: React.FC = () => {
               Booking Summary - {selectedShow.title}
             </h2>
             <button
-              onClick={generateCSV}
+              onClick={async () => await generateCSV()}
               disabled={loading || bookingData.length === 0}
               className="bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >

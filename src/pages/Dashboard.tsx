@@ -23,6 +23,8 @@ interface DashboardMetrics {
   monthlyGrowth: number
   lastWeekRevenue: number
   lastMonthRevenue: number
+  yesterdayRevenue: number
+  dailyGrowth: number
 }
 
 interface UpcomingEvent {
@@ -73,7 +75,9 @@ const Dashboard: React.FC = () => {
     weeklyGrowth: 0,
     monthlyGrowth: 0,
     lastWeekRevenue: 0,
-    lastMonthRevenue: 0
+    lastMonthRevenue: 0,
+    yesterdayRevenue: 0,
+    dailyGrowth: 0
   })
 
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([])
@@ -110,6 +114,7 @@ const Dashboard: React.FC = () => {
     try {
       const now = new Date()
       const today = now.toISOString().split('T')[0]
+      const yesterday = subDays(now, 1).toISOString().split('T')[0]
 
       // Date ranges
       const thisWeekStart = startOfWeek(now).toISOString()
@@ -122,50 +127,91 @@ const Dashboard: React.FC = () => {
       const lastMonthStart = startOfMonth(subMonths(now, 1)).toISOString()
       const lastMonthEnd = endOfMonth(subMonths(now, 1)).toISOString()
 
-      // Get all tickets with dates
+      // Get all tickets for total revenue (including ACTIVE and COMPLETED)
       const { data: allTickets } = await supabase
         .from('tickets')
-        .select('price, generated_at')
-        .eq('status', 'ACTIVE')
+        .select('price, generated_at, status')
+        .in('status', ['ACTIVE', 'COMPLETED'])
 
       if (!allTickets) return
 
-      // Calculate total revenue
+      // Calculate total revenue from all valid tickets
       const totalRevenue = allTickets.reduce((sum, ticket) => sum + ticket.price, 0)
 
       // Today's data
-      const todayTickets = allTickets.filter(ticket =>
-        ticket.generated_at.startsWith(today)
-      )
+      const todayTickets = allTickets.filter(ticket => {
+        const ticketDate = new Date(ticket.generated_at).toISOString().split('T')[0]
+        return ticketDate === today
+      })
       const todayRevenue = todayTickets.reduce((sum, ticket) => sum + ticket.price, 0)
 
+      // Yesterday's data
+      const yesterdayTickets = allTickets.filter(ticket => {
+        const ticketDate = new Date(ticket.generated_at).toISOString().split('T')[0]
+        return ticketDate === yesterday
+      })
+      const yesterdayRevenue = yesterdayTickets.reduce((sum, ticket) => sum + ticket.price, 0)
+
       // This week's data
-      const thisWeekTickets = allTickets.filter(ticket =>
-        ticket.generated_at >= thisWeekStart && ticket.generated_at <= thisWeekEnd
-      )
+      const thisWeekTickets = allTickets.filter(ticket => {
+        const ticketDateTime = new Date(ticket.generated_at)
+        return ticketDateTime >= new Date(thisWeekStart) && ticketDateTime <= new Date(thisWeekEnd)
+      })
       const weekRevenue = thisWeekTickets.reduce((sum, ticket) => sum + ticket.price, 0)
 
       // Last week's data
-      const lastWeekTickets = allTickets.filter(ticket =>
-        ticket.generated_at >= lastWeekStart && ticket.generated_at <= lastWeekEnd
-      )
+      const lastWeekTickets = allTickets.filter(ticket => {
+        const ticketDateTime = new Date(ticket.generated_at)
+        return ticketDateTime >= new Date(lastWeekStart) && ticketDateTime <= new Date(lastWeekEnd)
+      })
       const lastWeekRevenue = lastWeekTickets.reduce((sum, ticket) => sum + ticket.price, 0)
 
       // This month's data
-      const thisMonthTickets = allTickets.filter(ticket =>
-        ticket.generated_at >= thisMonthStart && ticket.generated_at <= thisMonthEnd
-      )
+      const thisMonthTickets = allTickets.filter(ticket => {
+        const ticketDateTime = new Date(ticket.generated_at)
+        return ticketDateTime >= new Date(thisMonthStart) && ticketDateTime <= new Date(thisMonthEnd)
+      })
       const monthRevenue = thisMonthTickets.reduce((sum, ticket) => sum + ticket.price, 0)
 
       // Last month's data
-      const lastMonthTickets = allTickets.filter(ticket =>
-        ticket.generated_at >= lastMonthStart && ticket.generated_at <= lastMonthEnd
-      )
+      const lastMonthTickets = allTickets.filter(ticket => {
+        const ticketDateTime = new Date(ticket.generated_at)
+        return ticketDateTime >= new Date(lastMonthStart) && ticketDateTime <= new Date(lastMonthEnd)
+      })
       const lastMonthRevenue = lastMonthTickets.reduce((sum, ticket) => sum + ticket.price, 0)
 
+      // Debug logging
+      console.log('Debug - Date ranges:', {
+        today,
+        yesterday,
+        thisWeekStart,
+        thisWeekEnd,
+        lastWeekStart,
+        lastWeekEnd,
+        thisMonthStart,
+        thisMonthEnd,
+        lastMonthStart,
+        lastMonthEnd
+      })
+      
+      console.log('Debug - Revenue calculations:', {
+        totalTickets: allTickets.length,
+        todayRevenue,
+        yesterdayRevenue,
+        weekRevenue,
+        lastWeekRevenue,
+        monthRevenue,
+        lastMonthRevenue,
+        todayTickets: todayTickets.length,
+        yesterdayTickets: yesterdayTickets.length,
+        thisWeekTickets: thisWeekTickets.length,
+        lastWeekTickets: lastWeekTickets.length
+      })
+
       // Calculate growth percentages
-      const weeklyGrowth = lastWeekRevenue > 0 ? ((weekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100 : 0
-      const monthlyGrowth = lastMonthRevenue > 0 ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0
+      const weeklyGrowth = lastWeekRevenue > 0 ? ((weekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100 : (weekRevenue > 0 ? 100 : 0)
+      const monthlyGrowth = lastMonthRevenue > 0 ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : (monthRevenue > 0 ? 100 : 0)
+      const dailyGrowth = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : (todayRevenue > 0 ? 100 : 0)
 
       setMetrics({
         totalRevenue,
@@ -176,7 +222,9 @@ const Dashboard: React.FC = () => {
         weeklyGrowth,
         monthlyGrowth,
         lastWeekRevenue,
-        lastMonthRevenue
+        lastMonthRevenue,
+        yesterdayRevenue,
+        dailyGrowth
       })
     } catch (error) {
       console.error('Error fetching metrics:', error)
@@ -197,13 +245,22 @@ const Dashboard: React.FC = () => {
         .eq('active', true)
         .gte('date', today)
         .order('date')
-        .limit(3)
+        .limit(10) // Get more shows to filter from
 
       if (!shows) return
 
       const events: UpcomingEvent[] = []
+      const now = new Date()
 
       for (const show of shows) {
+        // Check if show has already started
+        const showDateTime = new Date(`${show.date}T${show.time}`)
+        
+        // Skip shows that have already started
+        if (showDateTime <= now) {
+          continue
+        }
+
         // Calculate total capacity
         let capacity = 0
         if (show.layout?.structure?.sections) {
@@ -232,9 +289,7 @@ const Dashboard: React.FC = () => {
           }
         })
 
-        // Calculate countdown
-        const showDateTime = new Date(`${show.date}T${show.time}`)
-        const now = new Date()
+        // Calculate countdown (we know it's not started since we filtered above)
         const countdown = getCountdown(showDateTime, now)
 
         events.push({
@@ -246,6 +301,11 @@ const Dashboard: React.FC = () => {
           capacity,
           countdown
         })
+
+        // Stop when we have 3 upcoming events
+        if (events.length >= 3) {
+          break
+        }
       }
 
       setUpcomingEvents(events)
@@ -271,7 +331,7 @@ const Dashboard: React.FC = () => {
           .from('tickets')
           .select('price')
           .eq('show_id', show.id)
-          .eq('status', 'ACTIVE')
+          .in('status', ['ACTIVE', 'COMPLETED'])
 
         if (tickets && tickets.length > 0) {
           const revenue = tickets.reduce((sum, ticket) => sum + ticket.price, 0)
@@ -300,7 +360,7 @@ const Dashboard: React.FC = () => {
       const { data: tickets } = await supabase
         .from('tickets')
         .select('price, generated_at')
-        .eq('status', 'ACTIVE')
+        .in('status', ['ACTIVE', 'COMPLETED'])
         .order('generated_at')
 
       if (!tickets) return
@@ -420,11 +480,32 @@ const Dashboard: React.FC = () => {
         }
         return `Created ${log.entity_type.toLowerCase()}: ${log.entity_name}`
       case 'update':
+        if (log.entity_type === 'SHOW' && details.changes) {
+          const changes = details.changes
+          const changesList = Object.keys(changes).map(field => {
+            const change = changes[field]
+            if (field === 'price') {
+              return `${field}: ₹${change.from} → ₹${change.to}`
+            } else if (field === 'active') {
+              return `${field}: ${change.from ? 'Active' : 'Inactive'} → ${change.to ? 'Active' : 'Inactive'}`
+            } else {
+              return `${field}: "${change.from}" → "${change.to}"`
+            }
+          })
+          return `Updated show "${log.entity_name}" - ${changesList.join(', ')}`
+        }
         return `Updated ${log.entity_type.toLowerCase()}: ${log.entity_name}`
       case 'delete':
         return `Deleted ${log.entity_type.toLowerCase()}: ${log.entity_name}`
       case 'cancellation':
         return `Cancelled booking for ${details.seat_count || 1} seat(s)`
+      case 'export':
+        if (log.entity_type === 'ANALYTICS') {
+          return `Exported ${details.format} analytics report (${details.dateRange?.start} to ${details.dateRange?.end})`
+        } else if (log.entity_type === 'REPORT') {
+          return `Exported ${details.format} booking report for "${details.showTitle}"`
+        }
+        return `Exported ${log.entity_name}`
       default:
         return `${log.action} ${log.entity_type.toLowerCase()}: ${log.entity_name || 'Unknown'}`
     }
@@ -451,21 +532,10 @@ const Dashboard: React.FC = () => {
             <div className="p-3 bg-green-100 rounded-xl">
               <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
             </div>
-            <div className="flex items-center text-green-600 text-sm font-medium">
-              <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              +{metrics.weeklyGrowth}%
-            </div>
           </div>
           <div>
             <h3 className={`text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Revenue</h3>
             <p className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>₹{metrics.totalRevenue.toLocaleString()}</p>
-            <p className={`text-xs mt-1 transition-colors duration-200 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Compared to last month: +8.5%</p>
-          </div>
-          {/* Mini line chart */}
-          <div className="mt-4 h-8 flex items-end space-x-1">
-            {[40, 60, 45, 80, 65, 90, 75].map((height, i) => (
-              <div key={i} className="flex-1 bg-green-200 rounded-sm" style={{ height: `${height}%` }}></div>
-            ))}
           </div>
         </div>
 
@@ -483,13 +553,25 @@ const Dashboard: React.FC = () => {
           <div>
             <h3 className={`text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Today's Revenue</h3>
             <p className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>₹{metrics.todayRevenue.toLocaleString()}</p>
-            <p className={`text-xs mt-1 transition-colors duration-200 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Bookings: {metrics.todayBookings} tickets</p>
-          </div>
-          {/* Mini bar chart */}
-          <div className="mt-4 h-8 flex items-end justify-end space-x-1">
-            {[30, 50, 40, 70, 60, 45].map((height, i) => (
-              <div key={i} className="w-2 bg-blue-200 rounded-sm" style={{ height: `${height}%` }}></div>
-            ))}
+            <div className="flex items-center justify-between mt-1">
+              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Bookings: {metrics.todayBookings} tickets</p>
+              <div className="flex items-center space-x-1" title={`${metrics.dailyGrowth >= 0 ? 'Up' : 'Down'} ${Math.abs(metrics.dailyGrowth).toFixed(1)}% from yesterday (₹${metrics.yesterdayRevenue.toLocaleString()})`}>
+                <ArrowTrendingUpIcon 
+                  className={`h-3 w-3 ${
+                    metrics.dailyGrowth >= 0 
+                      ? 'text-green-500 rotate-0' 
+                      : 'text-red-500 rotate-180'
+                  }`} 
+                />
+                <span className={`text-xs font-medium ${
+                  metrics.dailyGrowth >= 0 
+                    ? 'text-green-600' 
+                    : 'text-red-600'
+                }`}>
+                  {Math.abs(metrics.dailyGrowth).toFixed(1)}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -508,13 +590,6 @@ const Dashboard: React.FC = () => {
             <h3 className={`text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Week's Revenue</h3>
             <p className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>₹{metrics.weekRevenue.toLocaleString()}</p>
           </div>
-          {/* 7-day mini line chart */}
-          <div className="mt-4 h-8 flex items-end space-x-1">
-            {dailyRevenue.map((value, i) => {
-              const height = (value / Math.max(...dailyRevenue)) * 100
-              return <div key={i} className="flex-1 bg-purple-200 rounded-sm" style={{ height: `${height}%` }}></div>
-            })}
-          </div>
         </div>
 
         {/* This Month's Revenue */}
@@ -532,114 +607,180 @@ const Dashboard: React.FC = () => {
             <h3 className={`text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Month's Revenue</h3>
             <p className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>₹{metrics.monthRevenue.toLocaleString()}</p>
           </div>
-          {/* Mini pie chart representation */}
-          <div className="mt-4 flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-400 to-red-500 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">85%</span>
-            </div>
-            <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>Event categories</div>
-          </div>
         </div>
       </div>
 
       {/* Row 2 - Upcoming Events */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Upcoming Events Countdown */}
-        <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-lg font-semibold mb-6 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Upcoming Events Countdown</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {upcomingEvents.map((event, i) => {
-              const progress = (event.booked / event.capacity) * 100
-              return (
-                <div key={i} className={`border rounded-xl p-4 transition-colors duration-200 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className={`font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{event.name}</h4>
-                    <span className="text-sm font-medium text-orange-600">{event.countdown}</span>
+      {upcomingEvents.length > 0 && (
+        <div className="grid grid-cols-1 gap-6">
+          {/* Upcoming Events Countdown */}
+          <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <h3 className={`text-lg font-semibold mb-6 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Upcoming Events Countdown</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {upcomingEvents.map((event, i) => {
+                const progress = (event.booked / event.capacity) * 100
+                return (
+                  <div key={i} className={`border rounded-xl p-4 transition-colors duration-200 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className={`font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{event.name}</h4>
+                      <span className="text-sm font-medium text-orange-600">{event.countdown}</span>
+                    </div>
+                    <div className={`flex items-center text-sm mb-3 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <CalendarDaysIcon className="h-4 w-4 mr-1" />
+                      {new Date(event.date).toLocaleDateString()} at {event.time}
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Bookings</span>
+                      <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{event.booked}/{event.capacity} tickets</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${progress >= 80 ? 'bg-red-500' : progress >= 60 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className={`flex items-center text-sm mb-3 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    <CalendarDaysIcon className="h-4 w-4 mr-1" />
-                    {new Date(event.date).toLocaleDateString()} at {event.time}
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Bookings</span>
-                    <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{event.booked}/{event.capacity} tickets</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-300 ${progress >= 80 ? 'bg-red-500' : progress >= 60 ? 'bg-yellow-500' : 'bg-green-500'
-                        }`}
-                      style={{ width: `${progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Row 3 - Revenue Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly vs Monthly Comparison */}
+        {/* Performance Analytics */}
         <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-lg font-semibold mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Weekly vs Monthly</h3>
+          <h3 className={`text-lg font-semibold mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Performance Analytics</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            {/* Weekly Growth */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
               <div>
-                <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Weekly Tickets</div>
-                <div className="text-xl font-bold text-blue-600">{weeklyTickets.reduce((a, b) => a + b, 0)}</div>
-              </div>
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">W</span>
+                <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>Weekly Growth</div>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-lg font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {metrics.weeklyGrowth >= 0 ? '+' : ''}{metrics.weeklyGrowth.toFixed(1)}%
+                  </span>
+                  <ArrowTrendingUpIcon 
+                    className={`h-4 w-4 ${
+                      metrics.weeklyGrowth >= 0 
+                        ? 'text-green-500 rotate-0' 
+                        : 'text-red-500 rotate-180'
+                    }`} 
+                  />
+                </div>
+                <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  vs last week (₹{metrics.lastWeekRevenue.toLocaleString()})
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between">
+
+            {/* Monthly Growth */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20">
               <div>
-                <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Monthly Tickets</div>
-                <div className="text-xl font-bold text-purple-600">{monthlyTickets}</div>
+                <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>Monthly Growth</div>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-lg font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {metrics.monthlyGrowth >= 0 ? '+' : ''}{metrics.monthlyGrowth.toFixed(1)}%
+                  </span>
+                  <ArrowTrendingUpIcon 
+                    className={`h-4 w-4 ${
+                      metrics.monthlyGrowth >= 0 
+                        ? 'text-green-500 rotate-0' 
+                        : 'text-red-500 rotate-180'
+                    }`} 
+                  />
+                </div>
+                <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  vs last month (₹{metrics.lastMonthRevenue.toLocaleString()})
+                </div>
               </div>
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 font-bold text-sm">M</span>
+            </div>
+
+            {/* Average Ticket Value */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+              <div>
+                <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-green-300' : 'text-green-700'}`}>Avg. Ticket Value</div>
+                <div className={`text-lg font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  ₹{metrics.todayBookings > 0 ? (metrics.todayRevenue / metrics.todayBookings).toFixed(0) : '0'}
+                </div>
+                <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Today's average
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Top Performing Events */}
+        {/* Business Insights */}
         <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-lg font-semibold mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Top Performing Events</h3>
-          <div className="space-y-3">
-            {topEvents.map((event, i) => {
-              const performance = (event.revenue / 50000) * 100
-              return (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className={`text-sm font-medium truncate transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{event.name}</div>
-                    <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>₹{event.revenue.toLocaleString()} • {event.tickets} tickets</div>
-                  </div>
-                  <div className="w-12 h-12 relative">
-                    <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
-                      <path
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="#e5e7eb"
-                        strokeWidth="2"
-                      />
-                      <path
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="2"
-                        strokeDasharray={`${performance}, 100`}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-xs font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{Math.round(performance)}%</span>
-                    </div>
-                  </div>
+          <h3 className={`text-lg font-semibold mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Business Insights</h3>
+          <div className="space-y-4">
+            {/* Revenue Trend */}
+            <div className="p-4 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <ChartBarIcon className="h-5 w-5 text-blue-500" />
+                  <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Revenue Trend</span>
                 </div>
-              )
-            })}
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  metrics.dailyGrowth >= 0 
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                }`}>
+                  {metrics.dailyGrowth >= 0 ? 'Trending Up' : 'Trending Down'}
+                </span>
+              </div>
+              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {metrics.dailyGrowth >= 0 
+                  ? `Revenue is up ${Math.abs(metrics.dailyGrowth).toFixed(1)}% from yesterday. Keep up the momentum!`
+                  : `Revenue is down ${Math.abs(metrics.dailyGrowth).toFixed(1)}% from yesterday. Consider promotional strategies.`
+                }
+              </p>
+            </div>
+
+            {/* Booking Performance */}
+            <div className="p-4 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <TicketIcon className="h-5 w-5 text-orange-500" />
+                  <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Booking Activity</span>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  metrics.todayBookings > 0 
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                }`}>
+                  {metrics.todayBookings > 0 ? 'Active' : 'Quiet'}
+                </span>
+              </div>
+              <p className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {metrics.todayBookings > 0 
+                  ? `${metrics.todayBookings} tickets sold today. Average price: ₹${(metrics.todayRevenue / metrics.todayBookings).toFixed(0)}`
+                  : 'No bookings today yet. Consider marketing campaigns or check upcoming shows.'
+                }
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="p-4 rounded-lg bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20">
+              <div className="flex items-center space-x-2 mb-2">
+                <CurrencyDollarIcon className="h-5 w-5 text-orange-500" />
+                <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Quick Actions</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                  View Reports
+                </button>
+                <button className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                  Add Show
+                </button>
+                <button className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                  Export Data
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

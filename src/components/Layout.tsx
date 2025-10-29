@@ -9,6 +9,7 @@ import {
   ArrowRightOnRectangleIcon,
   Squares2X2Icon,
   ChartBarIcon,
+  PresentationChartLineIcon,
   Bars3Icon,
   XMarkIcon,
   BellIcon,
@@ -96,6 +97,7 @@ const Layout: React.FC = () => {
     { name: 'Book Seats', href: '/booking', icon: TicketIcon },
     { name: 'Ticket History', href: '/tickets', icon: DocumentTextIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
+    { name: 'Analytics', href: '/analytics', icon: PresentationChartLineIcon },
   ]
 
   return (
