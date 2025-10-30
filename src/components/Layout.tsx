@@ -18,7 +18,9 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  KeyIcon
+  KeyIcon,
+  UserIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline'
 
 const Layout: React.FC = () => {
@@ -137,15 +139,41 @@ const Layout: React.FC = () => {
     }
   }
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
-    { name: 'Shows', href: '/shows', icon: FilmIcon },
-    { name: 'Layouts', href: '/layouts', icon: Squares2X2Icon },
-    { name: 'Book Seats', href: '/booking', icon: TicketIcon },
-    { name: 'Ticket History', href: '/tickets', icon: DocumentTextIcon },
-    { name: 'Reports', href: '/reports', icon: ChartBarIcon },
-    { name: 'Analytics', href: '/analytics', icon: PresentationChartLineIcon },
-  ]
+  // Navigation items based on user role
+  const getNavigation = () => {
+    const baseNavigation = [
+      { name: 'Shows', href: '/shows', icon: FilmIcon },
+      { name: 'Book Seats', href: '/booking', icon: TicketIcon },
+      { name: 'Customers', href: '/customers', icon: UserIcon },
+      { name: 'Ticket History', href: '/tickets', icon: TicketIcon },
+    ]
+
+    const adminOnlyNavigation = [
+      { name: 'Dashboard', href: '/', icon: HomeIcon },
+      { name: 'Layouts', href: '/layouts', icon: Squares2X2Icon },
+      { name: 'Customer Reports', href: '/customer-reports', icon: DocumentTextIcon },
+      { name: 'Reports', href: '/reports', icon: ChartBarIcon },
+      { name: 'Analytics', href: '/analytics', icon: PresentationChartLineIcon },
+      { name: 'Staff Management', href: '/staff', icon: UsersIcon },
+    ]
+
+    if (user?.role === 'admin') {
+      return [
+        { name: 'Dashboard', href: '/', icon: HomeIcon },
+        ...baseNavigation,
+        { name: 'Layouts', href: '/layouts', icon: Squares2X2Icon },
+        { name: 'Customer Reports', href: '/customer-reports', icon: DocumentTextIcon },
+        { name: 'Reports', href: '/reports', icon: ChartBarIcon },
+        { name: 'Analytics', href: '/analytics', icon: PresentationChartLineIcon },
+        { name: 'Staff Management', href: '/staff', icon: UsersIcon },
+      ]
+    } else {
+      // Staff role - limited access
+      return baseNavigation
+    }
+  }
+
+  const navigation = getNavigation()
 
   return (
     <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -210,7 +238,9 @@ const Layout: React.FC = () => {
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className={`text-base font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Admin</div>
+                    <div className={`text-base font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                      {user?.role === 'admin' ? 'Admin' : 'Staff'}
+                    </div>
                     <div className={`text-sm truncate transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                       {user?.email}
                     </div>
@@ -334,7 +364,9 @@ const Layout: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="min-w-0 flex-1">
-                  <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Admin</div>
+                  <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                    {user?.role === 'admin' ? 'Admin' : 'Staff'}
+                  </div>
                   <div className={`text-xs truncate transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     {user?.email}
                   </div>

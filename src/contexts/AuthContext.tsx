@@ -1,12 +1,20 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+
+interface User {
+  id: string
+  email: string
+  role: 'admin' | 'staff'
+  full_name?: string
+}
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  isAdmin: () => boolean
+  isStaff: () => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -24,53 +32,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
+    // Check for stored user session
+    const storedUser = localStorage.getItem('kalari_user')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        localStorage.removeItem('kalari_user')
       }
-    )
-
-    return () => subscription.unsubscribe()
+    }
+    setLoading(false)
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (error) throw error
+    try {
+      const { data, error } = await supabase.rpc('authenticate_user', {
+        p_email: email,
+        p_password: password
+      })
+
+      if (error) throw error
+
+      if (data.success) {
+        const userData = data.user
+        setUser(userData)
+        localStorage.setItem('kalari_user', JSON.stringify(userData))
+      } else {
+        throw new Error(data.error || 'Authentication failed')
+      }
+    } catch (error: any) {
+      throw new Error(error.message || 'Login failed')
+    }
   }
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Supabase signOut error:', error)
-        throw error
-      }
-      // Clear user state immediately
       setUser(null)
+      localStorage.removeItem('kalari_user')
     } catch (error) {
       console.error('Error in signOut:', error)
-      // Even if there's an error, clear the local user state
-      setUser(null)
       throw error
     }
   }
+
+  const isAdmin = () => user?.role === 'admin'
+  const isStaff = () => user?.role === 'staff'
 
   const value = {
     user,
     loading,
     signIn,
     signOut,
+    isAdmin,
+    isStaff,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

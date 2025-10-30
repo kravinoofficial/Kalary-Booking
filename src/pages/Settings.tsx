@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
+import { format } from 'date-fns'
 import { 
   UserIcon, 
   KeyIcon, 
@@ -54,13 +55,9 @@ const Settings: React.FC = () => {
     setMessage('')
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
-      })
-
-      if (error) throw error
-
-      setMessage('Password updated successfully!')
+      // In a real implementation, you would call your password update API
+      // For now, just show success message
+      setMessage('Password change functionality will be implemented with proper backend integration')
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -100,7 +97,7 @@ const Settings: React.FC = () => {
           booking.ticket?.ticket_code || '',
           booking.ticket?.price || '',
           booking.ticket?.status || '',
-          new Date(booking.booking_time).toLocaleString()
+          format(new Date(booking.booking_time), 'MMM dd, yyyy h:mm a')
         ].join(','))
       ].join('\n')
 
@@ -305,16 +302,18 @@ const Settings: React.FC = () => {
                         <span className="font-medium">{user?.email}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Last Login:</span>
-                        <span className="font-medium">
-                          {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'N/A'}
+                        <span className="text-gray-600">Role:</span>
+                        <span className={`font-medium px-2 py-1 rounded-full text-xs ${
+                          user?.role === 'admin' 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {user?.role === 'admin' ? 'Administrator' : 'Staff Member'}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Account Created:</span>
-                        <span className="font-medium">
-                          {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                        </span>
+                        <span className="text-gray-600">Full Name:</span>
+                        <span className="font-medium">{user?.full_name || 'Not set'}</span>
                       </div>
                     </div>
                   </div>

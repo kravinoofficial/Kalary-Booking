@@ -37,14 +37,27 @@ export interface Seat {
   price: number
 }
 
+export interface Customer {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  address?: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Booking {
   id: string
   show_id: string
   seat_id: string
   seat_code: string
   booked_by: string
+  customer_id?: string
   booking_time: string
   status: 'CONFIRMED' | 'CANCELLED'
+  customer?: Customer
+  show?: Show
 }
 
 export interface Ticket {

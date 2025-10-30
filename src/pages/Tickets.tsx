@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase, Ticket } from '../lib/supabase'
+import { supabase, Ticket, Customer } from '../lib/supabase'
 import { format } from 'date-fns'
 import { QRCodeSVG as QRCode } from 'qrcode.react'
 import { 
@@ -15,6 +15,14 @@ interface TicketWithDetails extends Ticket {
     title: string
     date: string
     time: string
+  }
+  booking?: {
+    customer_id: string
+    customer?: {
+      name: string
+      email?: string
+      phone?: string
+    }
   }
   booked_by: string
 }
@@ -32,14 +40,21 @@ interface BookingGroup {
   status: string
   generated_at: string
   booked_by: string
+  customer?: {
+    name: string
+    email?: string
+    phone?: string
+  }
 }
 
 const Tickets: React.FC = () => {
   const darkMode = useDarkMode()
   const [bookings, setBookings] = useState<BookingGroup[]>([])
+  const [allBookings, setAllBookings] = useState<BookingGroup[]>([]) // Store all bookings for filtering
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedDate, setSelectedDate] = useState<string>('') // Date filter state
   const [selectedBooking, setSelectedBooking] = useState<BookingGroup | null>(null)
   const [showPreview, setShowPreview] = useState(false)
 
@@ -47,13 +62,30 @@ const Tickets: React.FC = () => {
     fetchBookings()
   }, [])
 
+  // Filter bookings by ticket generated date
+  useEffect(() => {
+    if (selectedDate) {
+      const filteredBookings = allBookings.filter(booking => {
+        const generatedDate = new Date(booking.generated_at).toISOString().split('T')[0]
+        return generatedDate === selectedDate
+      })
+      setBookings(filteredBookings)
+    } else {
+      setBookings(allBookings) // Show all bookings if no date selected
+    }
+  }, [selectedDate, allBookings])
+
   const fetchBookings = async () => {
     try {
       const { data, error } = await supabase
         .from('tickets')
         .select(`
           *,
-          show:shows(title, date, time)
+          show:shows(title, date, time),
+          booking:bookings(
+            customer_id,
+            customer:customers(name, email, phone)
+          )
         `)
         .order('generated_at', { ascending: false })
 
@@ -72,7 +104,8 @@ const Tickets: React.FC = () => {
             seat_codes: [],
             status: ticket.status,
             generated_at: ticket.generated_at,
-            booked_by: ticket.booked_by
+            booked_by: ticket.booked_by,
+            customer: ticket.booking?.customer
           }
         }
         
@@ -86,7 +119,9 @@ const Tickets: React.FC = () => {
         }
       })
 
-      setBookings(Object.values(groupedBookings))
+      const bookingsList = Object.values(groupedBookings)
+      setAllBookings(bookingsList) // Store all bookings
+      setBookings(bookingsList) // Initially show all bookings
     } catch (error) {
       console.error('Error fetching bookings:', error)
     } finally {
@@ -98,7 +133,9 @@ const Tickets: React.FC = () => {
     const matchesSearch = 
       booking.booking_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.show?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.seat_codes.some(code => code.toLowerCase().includes(searchTerm.toLowerCase()))
+      booking.seat_codes.some(code => code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      booking.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'active' && booking.status === 'ACTIVE') ||
@@ -241,7 +278,7 @@ const Tickets: React.FC = () => {
                 </div>
                 <div class="info-row">
                   <span class="info-label">Time:</span>
-                  <span class="info-value">${booking.show?.time || 'N/A'}</span>
+                  <span class="info-value">${booking.show?.time ? format(new Date(`2000-01-01T${booking.show.time}`), 'h:mm a') : 'N/A'}</span>
                 </div>
                 <div class="seats-section">
                   <div class="seats-label">Seats:</div>
@@ -255,6 +292,12 @@ const Tickets: React.FC = () => {
                   <span class="info-label">Total Price:</span>
                   <span class="info-value">₹${booking.total_price}</span>
                 </div>
+                ${booking.customer ? `
+                <div class="info-row">
+                  <span class="info-label">Customer:</span>
+                  <span class="info-value">${booking.customer.name}</span>
+                </div>
+                ` : ''}
               </div>
 
               <div class="qr-section">
@@ -263,7 +306,7 @@ const Tickets: React.FC = () => {
 
               <div class="footer">
                 <div>Booking ID: ${booking.booking_id.slice(0, 8)}...</div>
-                <div>Generated: ${format(new Date(booking.generated_at), 'MMM dd, yyyy HH:mm')}</div>
+                <div>Generated: ${format(new Date(booking.generated_at), 'MMM dd, yyyy h:mm a')}</div>
               </div>
             </div>
           </div>
@@ -304,7 +347,69 @@ const Tickets: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Date Filter */}
+      <div className={`rounded-2xl shadow-sm border p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
+        <h2 className={`text-lg font-medium mb-4 transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Filter by Generated Date</h2>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex-1">
+            <label className={`block text-sm font-medium mb-2 transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              Select Generated Date
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border transition-colors duration-200 ${
+                darkMode 
+                  ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-slate-500' 
+                  : 'bg-white border-slate-300 text-slate-900 focus:border-slate-400'
+              } focus:outline-none focus:ring-2 focus:ring-primary-500/20`}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedDate('')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Clear Filter
+            </button>
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-primary-600 text-white hover:bg-primary-700'
+                  : 'bg-primary-600 text-white hover:bg-primary-700'
+              }`}
+            >
+              Today
+            </button>
+          </div>
+        </div>
+        
+        {/* Show count and selected date info */}
+        <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            {selectedDate ? (
+              <>Showing {bookings.length} booking(s) generated on {format(new Date(selectedDate), 'MMM dd, yyyy')}</>
+            ) : (
+              <>Showing {bookings.length} booking(s) (all dates)</>
+            )}
+          </div>
+          {selectedDate && (
+            <div className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
+              darkMode ? 'bg-primary-900/50 text-primary-300' : 'bg-primary-100 text-primary-700'
+            }`}>
+              Filtered by: {format(new Date(selectedDate), 'MMM dd, yyyy')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Search and Status Filters */}
       <div className={`rounded-2xl shadow-sm border p-4 sm:p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
@@ -312,7 +417,7 @@ const Tickets: React.FC = () => {
               <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
               <input
                 type="text"
-                placeholder="Search by ticket code, seat, or show..."
+                placeholder="Search by ticket code, seat, show, or customer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 ${darkMode ? 'bg-slate-800/50 border-slate-700 text-slate-100 placeholder-slate-400' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-500'}`}
@@ -345,6 +450,9 @@ const Tickets: React.FC = () => {
                   </th>
                   <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     Show
+                  </th>
+                  <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Customer
                   </th>
                   <th className={`px-6 py-4 text-left text-xs font-medium uppercase tracking-wider transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     Seats
@@ -380,8 +488,33 @@ const Tickets: React.FC = () => {
                         {booking.show?.date ? format(new Date(booking.show.date), 'MMM dd, yyyy') : 'N/A'}
                       </div>
                       <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {booking.show?.time}
+                        {booking.show?.time ? format(new Date(`2000-01-01T${booking.show.time}`), 'h:mm a') : 'N/A'}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {booking.customer ? (
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                            <span className="text-white font-medium text-sm">
+                              {booking.customer.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                              {booking.customer.name}
+                            </div>
+                            {booking.customer.email && (
+                              <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {booking.customer.email}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          No customer info
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -428,7 +561,7 @@ const Tickets: React.FC = () => {
                         {format(new Date(booking.generated_at), 'MMM dd, yyyy')}
                       </div>
                       <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {format(new Date(booking.generated_at), 'HH:mm')}
+                        {format(new Date(booking.generated_at), 'h:mm a')}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -496,6 +629,14 @@ const Tickets: React.FC = () => {
                 </div>
 
                 <div className="space-y-3 mb-4">
+                  {selectedBooking.customer && (
+                    <div className="flex justify-between">
+                      <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Customer:</span>
+                      <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                        {selectedBooking.customer.name}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Date:</span>
                     <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -505,7 +646,7 @@ const Tickets: React.FC = () => {
                   <div className="flex justify-between">
                     <span className={`font-medium transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Time:</span>
                     <span className={`transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                      {selectedBooking.show?.time || 'N/A'}
+                      {selectedBooking.show?.time ? format(new Date(`2000-01-01T${selectedBooking.show.time}`), 'h:mm a') : 'N/A'}
                     </span>
                   </div>
                   <div>
@@ -544,7 +685,7 @@ const Tickets: React.FC = () => {
                     Booking ID: {selectedBooking.booking_id.slice(0, 8)}...
                   </div>
                   <div className={`transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Generated: {format(new Date(selectedBooking.generated_at), 'MMM dd, yyyy HH:mm')}
+                    Generated: {format(new Date(selectedBooking.generated_at), 'MMM dd, yyyy h:mm a')}
                   </div>
                 </div>
               </div>

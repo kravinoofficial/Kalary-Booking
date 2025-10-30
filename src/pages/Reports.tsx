@@ -24,10 +24,12 @@ interface BookingReport {
 
 const Reports: React.FC = () => {
   const [shows, setShows] = useState<Show[]>([])
+  const [allShows, setAllShows] = useState<Show[]>([]) // Store all shows for filtering
   const [selectedShow, setSelectedShow] = useState<Show | null>(null)
   const [bookingData, setBookingData] = useState<BookingReport[]>([])
   const [loading, setLoading] = useState(false)
   const darkMode = useDarkMode()
+  const [selectedDate, setSelectedDate] = useState<string>('') // Date filter state
   const [summary, setSummary] = useState({
     totalBookings: 0,
     totalTickets: 0,
@@ -39,6 +41,27 @@ const Reports: React.FC = () => {
     fetchShows()
   }, [])
 
+  // Filter shows by selected date
+  useEffect(() => {
+    if (selectedDate) {
+      const filteredShows = allShows.filter(show => show.date === selectedDate)
+      setShows(filteredShows)
+    } else {
+      setShows(allShows) // Show all shows if no date selected
+    }
+    // Reset selected show if it's not in the filtered results
+    if (selectedShow && selectedDate && selectedShow.date !== selectedDate) {
+      setSelectedShow(null)
+      setBookingData([])
+      setSummary({
+        totalBookings: 0,
+        totalTickets: 0,
+        totalRevenue: 0,
+        averageTicketsPerBooking: 0
+      })
+    }
+  }, [selectedDate, allShows, selectedShow])
+
   const fetchShows = async () => {
     try {
       const { data, error } = await supabase
@@ -47,7 +70,8 @@ const Reports: React.FC = () => {
         .order('date', { ascending: false })
 
       if (error) throw error
-      setShows(data || [])
+      setAllShows(data || []) // Store all shows
+      setShows(data || []) // Initially show all shows
     } catch (error) {
       console.error('Error fetching shows:', error)
     }
@@ -165,7 +189,7 @@ const Reports: React.FC = () => {
       booking.total_tickets,
       booking.total_amount,
       booking.booked_by,
-      format(new Date(booking.booking_time), 'MMM dd, yyyy HH:mm'),
+      format(new Date(booking.booking_time), 'MMM dd, yyyy h:mm a'),
       booking.status
     ])
 
@@ -219,12 +243,90 @@ const Reports: React.FC = () => {
         <p className={`mt-2 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Generate booking reports and export data</p>
       </div>
 
+      {/* Date Filter */}
+      <div className={`rounded-2xl shadow-sm border p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <h2 className={`text-lg font-medium mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Filter by Date</h2>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex-1">
+            <label className={`block text-sm font-medium mb-2 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              Select Date
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border transition-colors duration-200 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-100 focus:border-gray-500' 
+                  : 'bg-white border-gray-300 text-gray-900 focus:border-gray-400'
+              } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedDate('')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Clear Filter
+            </button>
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              Today
+            </button>
+          </div>
+        </div>
+        
+        {/* Show count and selected date info */}
+        <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            {selectedDate ? (
+              <>Showing {shows.length} show(s) for {format(new Date(selectedDate), 'MMM dd, yyyy')}</>
+            ) : (
+              <>Showing {shows.length} show(s) (all dates)</>
+            )}
+          </div>
+          {selectedDate && (
+            <div className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
+              darkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'
+            }`}>
+              Filtered by: {format(new Date(selectedDate), 'MMM dd, yyyy')}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Show Selection */}
       <div className={`rounded-2xl shadow-sm border p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <h2 className={`text-lg font-semibold mb-4 flex items-center transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           <CalendarIcon className="h-5 w-5 mr-2" />
-          Select Show for Report
+          Select Show for Report {selectedDate && `(${format(new Date(selectedDate), 'MMM dd, yyyy')})`}
         </h2>
+        
+        {shows.length === 0 ? (
+          <div className={`text-center py-8 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            {selectedDate ? (
+              <>
+                <div className="text-lg mb-2">No shows available for {format(new Date(selectedDate), 'MMM dd, yyyy')}</div>
+                <div className="text-sm">Try selecting a different date or clear the filter to see all shows.</div>
+              </>
+            ) : (
+              <>
+                <div className="text-lg mb-2">No shows available</div>
+                <div className="text-sm">Create shows to generate reports.</div>
+              </>
+            )}
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {shows.map((show) => (
             <button
@@ -245,7 +347,7 @@ const Reports: React.FC = () => {
             >
               <div className={`font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{show.title}</div>
               <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {format(new Date(show.date), 'MMM dd, yyyy')} at {show.time}
+                {format(new Date(show.date), 'MMM dd, yyyy')} at {format(new Date(`2000-01-01T${show.time}`), 'h:mm a')}
               </div>
               <div className="text-sm font-medium text-blue-600">₹{show.price}</div>
               <div className="mt-2">
@@ -389,7 +491,7 @@ const Reports: React.FC = () => {
                               {format(new Date(booking.booking_time), 'MMM dd, yyyy')}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {format(new Date(booking.booking_time), 'HH:mm')}
+                              {format(new Date(booking.booking_time), 'h:mm a')}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

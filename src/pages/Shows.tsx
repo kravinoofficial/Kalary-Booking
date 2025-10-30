@@ -7,11 +7,13 @@ import { logShowDeletion, logShowCreation, logShowUpdate } from '../utils/activi
 
 const Shows: React.FC = () => {
   const [shows, setShows] = useState<Show[]>([])
+  const [allShows, setAllShows] = useState<Show[]>([]) // Store all shows for filtering
   const [layouts, setLayouts] = useState<Layout[]>([])
   const [loading, setLoading] = useState(true)
   const darkMode = useDarkMode()
   const [showModal, setShowModal] = useState(false)
   const [editingShow, setEditingShow] = useState<Show | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string>('') // Date filter state
   const [formData, setFormData] = useState({
     title: '',
     date: '',
@@ -25,6 +27,16 @@ const Shows: React.FC = () => {
     fetchShows()
     fetchLayouts()
   }, [])
+
+  // Filter shows by selected date
+  useEffect(() => {
+    if (selectedDate) {
+      const filteredShows = allShows.filter(show => show.date === selectedDate)
+      setShows(filteredShows)
+    } else {
+      setShows(allShows) // Show all shows if no date selected
+    }
+  }, [selectedDate, allShows])
 
   const fetchShows = async () => {
     try {
@@ -49,8 +61,10 @@ const Shows: React.FC = () => {
             layout:layouts(*)
           `)
           .order('date', { ascending: false })
-        setShows(updatedData || [])
+        setAllShows(updatedData || []) // Store all shows
+        setShows(updatedData || []) // Initially show all shows
       } else {
+        setAllShows([])
         setShows([])
       }
     } catch (error) {
@@ -163,10 +177,17 @@ const Shows: React.FC = () => {
     try {
       if (!show.layout) return false
 
-      // Calculate total seats from layout
+      // Calculate total seats from layout (support both new and old formats)
       const totalSeats = show.layout.structure.sections?.reduce((total: number, section: any) => {
-        return total + (section.rows * section.seatsPerRow)
+        if (section.rows && Array.isArray(section.rows)) {
+          // New format with individual row configuration
+          return total + section.rows.reduce((sum: number, row: any) => sum + row.seats, 0)
+        }
+        // Fallback for old format
+        return total + (section.rows * section.seatsPerRow || 0)
       }, 0) || 0
+
+      console.log(`Checking house full for show ${show.title}: Total seats = ${totalSeats}`)
 
       // Count booked seats
       const { data: bookings } = await supabase
@@ -185,6 +206,8 @@ const Shows: React.FC = () => {
             : 1)
         }
       }, 0) || 0
+
+      console.log(`Booked seats: ${bookedSeatsCount}, Total seats: ${totalSeats}, Is house full: ${bookedSeatsCount >= totalSeats}`)
 
       return bookedSeatsCount >= totalSeats
     } catch (error) {
@@ -290,7 +313,7 @@ const Shows: React.FC = () => {
       setShowModal(false)
       setEditingShow(null)
       resetForm()
-      fetchShows()
+      await fetchShows() // Refresh the shows list
     } catch (error) {
       console.error('Error saving show:', error)
     }
@@ -401,6 +424,82 @@ const Shows: React.FC = () => {
         </div>
       </div>
 
+      {/* Date Filter */}
+      <div className={`rounded-2xl shadow-sm border p-6 mb-6 transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
+        <h2 className={`text-lg font-medium mb-4 transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Filter by Date</h2>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex-1">
+            <label className={`block text-sm font-medium mb-2 transition-colors duration-200 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              Select Date
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={`w-full px-4 py-2 rounded-lg border transition-colors duration-200 ${
+                darkMode 
+                  ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-slate-500' 
+                  : 'bg-white border-slate-300 text-slate-900 focus:border-slate-400'
+              } focus:outline-none focus:ring-2 focus:ring-primary-500/20`}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedDate('')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              Clear Filter
+            </button>
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-primary-600 text-white hover:bg-primary-700'
+                  : 'bg-primary-600 text-white hover:bg-primary-700'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => {
+                const tomorrow = new Date()
+                tomorrow.setDate(tomorrow.getDate() + 1)
+                setSelectedDate(tomorrow.toISOString().split('T')[0])
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                darkMode
+                  ? 'bg-slate-600 text-white hover:bg-slate-500'
+                  : 'bg-slate-600 text-white hover:bg-slate-500'
+              }`}
+            >
+              Tomorrow
+            </button>
+          </div>
+        </div>
+        
+        {/* Show count and selected date info */}
+        <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            {selectedDate ? (
+              <>Showing {shows.length} show(s) for {format(new Date(selectedDate), 'MMM dd, yyyy')}</>
+            ) : (
+              <>Showing {shows.length} show(s) (all dates)</>
+            )}
+          </div>
+          {selectedDate && (
+            <div className={`text-xs px-2 py-1 rounded-full transition-colors duration-200 ${
+              darkMode ? 'bg-primary-900/50 text-primary-300' : 'bg-primary-100 text-primary-700'
+            }`}>
+              Filtered by: {format(new Date(selectedDate), 'MMM dd, yyyy')}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className={`rounded-2xl shadow-sm border overflow-hidden transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="overflow-x-auto -mx-3 sm:mx-0">
           <div className="px-3 sm:px-0">
@@ -428,7 +527,26 @@ const Shows: React.FC = () => {
                 </tr>
               </thead>
               <tbody className={`divide-y transition-colors duration-200 ${darkMode ? 'bg-slate-900/50 divide-slate-800' : 'bg-white divide-slate-200'}`}>
-                {shows.map((show) => (
+                {shows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <div className={`transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {selectedDate ? (
+                          <>
+                            <div className="text-lg mb-2">No shows found for {format(new Date(selectedDate), 'MMM dd, yyyy')}</div>
+                            <div className="text-sm">Try selecting a different date or clear the filter to see all shows.</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-lg mb-2">No shows available</div>
+                            <div className="text-sm">Create your first show to get started.</div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  shows.map((show) => (
                   <tr key={show.id} className={`transition-colors duration-200 ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
                     <td className="px-4 py-4">
                       <div>
@@ -442,7 +560,7 @@ const Shows: React.FC = () => {
                       <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
                         {format(new Date(show.date), 'MMM dd, yyyy')}
                       </div>
-                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{show.time}</div>
+                      <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{format(new Date(`2000-01-01T${show.time}`), 'h:mm a')}</div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-center">
                       <div className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>₹{show.price}</div>
@@ -498,7 +616,8 @@ const Shows: React.FC = () => {
                       )}
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>

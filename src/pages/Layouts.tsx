@@ -13,10 +13,34 @@ const Layouts: React.FC = () => {
     name: '',
     structure: {
       sections: [
-        { name: 'North', rows: 5, seatsPerRow: 10 },
-        { name: 'South', rows: 5, seatsPerRow: 10 },
-        { name: 'East', rows: 3, seatsPerRow: 8 },
-        { name: 'West', rows: 3, seatsPerRow: 8 }
+        { 
+          name: 'North',
+          rows: [
+            { rowNumber: 1, seats: 16 },
+            { rowNumber: 2, seats: 16 },
+            { rowNumber: 3, seats: 14 },
+            { rowNumber: 4, seats: 12 },
+            { rowNumber: 5, seats: 10 }
+          ]
+        },
+        { 
+          name: 'South',
+          rows: [
+            { rowNumber: 1, seats: 12 },
+            { rowNumber: 2, seats: 12 },
+            { rowNumber: 3, seats: 10 },
+            { rowNumber: 4, seats: 8 },
+            { rowNumber: 5, seats: 6 }
+          ]
+        },
+        { 
+          name: 'East',
+          rows: Array.from({ length: 15 }, (_, i) => ({ rowNumber: i + 1, seats: 2 }))
+        },
+        { 
+          name: 'West',
+          rows: Array.from({ length: 15 }, (_, i) => ({ rowNumber: i + 1, seats: 2 }))
+        }
       ]
     }
   })
@@ -76,9 +100,32 @@ const Layouts: React.FC = () => {
 
   const handleEdit = (layout: Layout) => {
     setEditingLayout(layout)
+    
+    // Convert old format to new format if needed
+    const convertedStructure = {
+      ...layout.structure,
+      sections: layout.structure.sections?.map((section: any) => {
+        if (Array.isArray(section.rows)) {
+          // Already in new format
+          return section
+        } else {
+          // Convert old format to new format
+          const rowCount = section.rows || 0
+          const seatsPerRow = section.seatsPerRow || 0
+          return {
+            name: section.name,
+            rows: Array.from({ length: rowCount }, (_, i) => ({
+              rowNumber: i + 1,
+              seats: seatsPerRow
+            }))
+          }
+        }
+      }) || []
+    }
+    
     setFormData({
       name: layout.name,
-      structure: layout.structure
+      structure: convertedStructure
     })
     setShowModal(true)
   }
@@ -104,10 +151,34 @@ const Layouts: React.FC = () => {
       name: '',
       structure: {
         sections: [
-          { name: 'North', rows: 5, seatsPerRow: 10 },
-          { name: 'South', rows: 5, seatsPerRow: 10 },
-          { name: 'East', rows: 3, seatsPerRow: 8 },
-          { name: 'West', rows: 3, seatsPerRow: 8 }
+          { 
+            name: 'North',
+            rows: [
+              { rowNumber: 1, seats: 16 },
+              { rowNumber: 2, seats: 16 },
+              { rowNumber: 3, seats: 14 },
+              { rowNumber: 4, seats: 12 },
+              { rowNumber: 5, seats: 10 }
+            ]
+          },
+          { 
+            name: 'South',
+            rows: [
+              { rowNumber: 1, seats: 12 },
+              { rowNumber: 2, seats: 12 },
+              { rowNumber: 3, seats: 10 },
+              { rowNumber: 4, seats: 8 },
+              { rowNumber: 5, seats: 6 }
+            ]
+          },
+          { 
+            name: 'East',
+            rows: Array.from({ length: 15 }, (_, i) => ({ rowNumber: i + 1, seats: 2 }))
+          },
+          { 
+            name: 'West',
+            rows: Array.from({ length: 15 }, (_, i) => ({ rowNumber: i + 1, seats: 2 }))
+          }
         ]
       }
     })
@@ -116,6 +187,40 @@ const Layouts: React.FC = () => {
   const updateSection = (index: number, field: string, value: any) => {
     const newSections = [...formData.structure.sections]
     newSections[index] = { ...newSections[index], [field]: value }
+    setFormData({
+      ...formData,
+      structure: { ...formData.structure, sections: newSections }
+    })
+  }
+
+  const addRowToSection = (sectionIndex: number) => {
+    const newSections = [...formData.structure.sections]
+    const section = newSections[sectionIndex]
+    const newRowNumber = section.rows.length + 1
+    section.rows.push({ rowNumber: newRowNumber, seats: 10 })
+    setFormData({
+      ...formData,
+      structure: { ...formData.structure, sections: newSections }
+    })
+  }
+
+  const removeRowFromSection = (sectionIndex: number, rowIndex: number) => {
+    const newSections = [...formData.structure.sections]
+    const section = newSections[sectionIndex]
+    section.rows.splice(rowIndex, 1)
+    // Renumber rows
+    section.rows.forEach((row, index) => {
+      row.rowNumber = index + 1
+    })
+    setFormData({
+      ...formData,
+      structure: { ...formData.structure, sections: newSections }
+    })
+  }
+
+  const updateRowSeats = (sectionIndex: number, rowIndex: number, seats: number) => {
+    const newSections = [...formData.structure.sections]
+    newSections[sectionIndex].rows[rowIndex].seats = seats
     setFormData({
       ...formData,
       structure: { ...formData.structure, sections: newSections }
@@ -176,81 +281,166 @@ const Layouts: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              {layout.structure.sections?.map((section: any, index: number) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{section.name}</span>
-                  <span className={`transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {section.rows}R × {section.seatsPerRow}S
-                  </span>
-                </div>
-              ))}
+              {layout.structure.sections?.map((section: any, index: number) => {
+                const totalSeats = Array.isArray(section.rows) 
+                  ? section.rows.reduce((sum: number, row: any) => sum + row.seats, 0) 
+                  : (section.rows * section.seatsPerRow || 0)
+                const rowCount = Array.isArray(section.rows) 
+                  ? section.rows.length 
+                  : (section.rows || 0)
+                return (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{section.name}</span>
+                    <div className="text-right">
+                      <div className={`transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {rowCount}R × {totalSeats}S
+                      </div>
+
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="text-sm text-gray-500">
-                Total Seats: {layout.structure.sections?.reduce((total: number, section: any) => 
-                  total + (section.rows * section.seatsPerRow), 0
-                )}
+                Total Seats: {layout.structure.sections?.reduce((total: number, section: any) => {
+                  const sectionSeats = Array.isArray(section.rows) 
+                    ? section.rows.reduce((sum: number, row: any) => sum + row.seats, 0) 
+                    : (section.rows * section.seatsPerRow || 0)
+                  return total + sectionSeats
+                }, 0)}
               </div>
             </div>
 
-            {/* Clean theater-style visual representation */}
-            <div className={`mt-4 rounded-xl p-4 h-40 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <div className="flex flex-col items-center justify-center h-full space-y-2">
+            {/* Enhanced theater-style visual representation */}
+            <div className={`mt-4 rounded-xl p-4 h-48 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+              <div className="flex flex-col items-center justify-center h-full space-y-3">
                 
                 {/* North section indicator */}
-                <div className="flex space-x-1">
-                  {Array.from({ length: Math.min(layout.structure.sections?.find((s: any) => s.name === 'North')?.seatsPerRow || 0, 8) }, (_, i) => (
-                    <div key={i} className="w-2 h-1.5 bg-gray-300 rounded-sm"></div>
-                  ))}
+                <div className="flex flex-col items-center space-y-1">
+                  <div className="text-xs text-gray-500 font-medium">NORTH</div>
+                  <div className="flex space-x-0.5">
+                    {(() => {
+                      const northSection = layout.structure.sections?.find((s: any) => s.name === 'North')
+                      const maxSeats = Array.isArray(northSection?.rows) 
+                        ? Math.max(...northSection.rows.map((r: any) => r.seats))
+                        : (northSection?.seatsPerRow || 0)
+                      return Array.from({ length: Math.min(maxSeats, 12) }, (_, i) => (
+                        <div key={i} className="w-1.5 h-1 bg-blue-300 rounded-sm"></div>
+                      ))
+                    })()}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {(() => {
+                      const northSection = layout.structure.sections?.find((s: any) => s.name === 'North')
+                      const rowCount = Array.isArray(northSection?.rows) ? northSection.rows.length : (northSection?.rows || 0)
+                      const totalSeats = Array.isArray(northSection?.rows) 
+                        ? northSection.rows.reduce((sum: number, row: any) => sum + row.seats, 0)
+                        : ((northSection?.rows || 0) * (northSection?.seatsPerRow || 0))
+                      return `${rowCount}R × ${totalSeats}S`
+                    })()}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500 font-medium">NORTH</div>
                 
                 {/* Middle section with West, Stage, East */}
-                <div className="flex items-center justify-center space-x-4 w-full">
+                <div className="flex items-center justify-center space-x-6 w-full">
                   {/* West */}
                   <div className="flex flex-col items-center space-y-1">
-                    <div className="text-xs text-gray-500 font-medium">WEST</div>
-                    <div className="flex flex-col space-y-0.5">
-                      {Array.from({ length: Math.min(layout.structure.sections?.find((s: any) => s.name === 'West')?.rows || 0, 3) }, (_, i) => (
-                        <div key={i} className="flex space-x-0.5">
-                          {Array.from({ length: Math.min(layout.structure.sections?.find((s: any) => s.name === 'West')?.seatsPerRow || 0, 3) }, (_, j) => (
-                            <div key={j} className="w-1.5 h-1.5 bg-gray-300 rounded-sm"></div>
-                          ))}
-                        </div>
-                      ))}
+                    <div className="text-xs text-gray-500 font-medium rotate-90">WEST</div>
+                    <div className="flex space-x-0.5">
+                      {(() => {
+                        const westSection = layout.structure.sections?.find((s: any) => s.name === 'West')
+                        const maxSeats = Array.isArray(westSection?.rows) 
+                          ? Math.max(...westSection.rows.map((r: any) => r.seats))
+                          : (westSection?.seatsPerRow || 0)
+                        return Array.from({ length: Math.min(maxSeats, 2) }, (_, i) => (
+                          <div key={i} className="flex flex-col space-y-0.5">
+                            {Array.from({ length: Math.min(8, 8) }, (_, j) => (
+                              <div key={j} className="w-1 h-1.5 bg-green-300 rounded-sm"></div>
+                            ))}
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-400 text-center">
+                      {(() => {
+                        const westSection = layout.structure.sections?.find((s: any) => s.name === 'West')
+                        const rowCount = Array.isArray(westSection?.rows) ? westSection.rows.length : (westSection?.rows || 0)
+                        const totalSeats = Array.isArray(westSection?.rows) 
+                          ? westSection.rows.reduce((sum: number, row: any) => sum + row.seats, 0)
+                          : ((westSection?.rows || 0) * (westSection?.seatsPerRow || 0))
+                        return `${rowCount}R × ${totalSeats}S`
+                      })()}
                     </div>
                   </div>
                   
                   {/* Central Stage */}
                   <div className="flex flex-col items-center">
-                    <div className="w-16 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                      STAGE
+                    <div className="w-20 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                      <div className="text-center">
+                        <div>Kalari</div>
+                        <div className="text-xs opacity-80">STAGE</div>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">Kalari</div>
+                    <div className="text-xs text-gray-400 mt-1">All eyes this way please</div>
                   </div>
                   
                   {/* East */}
                   <div className="flex flex-col items-center space-y-1">
-                    <div className="text-xs text-gray-500 font-medium">EAST</div>
-                    <div className="flex flex-col space-y-0.5">
-                      {Array.from({ length: Math.min(layout.structure.sections?.find((s: any) => s.name === 'East')?.rows || 0, 3) }, (_, i) => (
-                        <div key={i} className="flex space-x-0.5">
-                          {Array.from({ length: Math.min(layout.structure.sections?.find((s: any) => s.name === 'East')?.seatsPerRow || 0, 3) }, (_, j) => (
-                            <div key={j} className="w-1.5 h-1.5 bg-gray-300 rounded-sm"></div>
-                          ))}
-                        </div>
-                      ))}
+                    <div className="text-xs text-gray-500 font-medium rotate-90">EAST</div>
+                    <div className="flex space-x-0.5">
+                      {(() => {
+                        const eastSection = layout.structure.sections?.find((s: any) => s.name === 'East')
+                        const maxSeats = Array.isArray(eastSection?.rows) 
+                          ? Math.max(...eastSection.rows.map((r: any) => r.seats))
+                          : (eastSection?.seatsPerRow || 0)
+                        return Array.from({ length: Math.min(maxSeats, 2) }, (_, i) => (
+                          <div key={i} className="flex flex-col space-y-0.5">
+                            {Array.from({ length: Math.min(8, 8) }, (_, j) => (
+                              <div key={j} className="w-1 h-1.5 bg-green-300 rounded-sm"></div>
+                            ))}
+                          </div>
+                        ))
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-400 text-center">
+                      {(() => {
+                        const eastSection = layout.structure.sections?.find((s: any) => s.name === 'East')
+                        const rowCount = Array.isArray(eastSection?.rows) ? eastSection.rows.length : (eastSection?.rows || 0)
+                        const totalSeats = Array.isArray(eastSection?.rows) 
+                          ? eastSection.rows.reduce((sum: number, row: any) => sum + row.seats, 0)
+                          : ((eastSection?.rows || 0) * (eastSection?.seatsPerRow || 0))
+                        return `${rowCount}R × ${totalSeats}S`
+                      })()}
                     </div>
                   </div>
                 </div>
                 
                 {/* South section indicator */}
-                <div className="text-xs text-gray-500 font-medium">SOUTH</div>
-                <div className="flex space-x-1">
-                  {Array.from({ length: Math.min(layout.structure.sections?.find((s: any) => s.name === 'South')?.seatsPerRow || 0, 8) }, (_, i) => (
-                    <div key={i} className="w-2 h-1.5 bg-gray-300 rounded-sm"></div>
-                  ))}
+                <div className="flex flex-col items-center space-y-1">
+                  <div className="flex space-x-0.5">
+                    {(() => {
+                      const southSection = layout.structure.sections?.find((s: any) => s.name === 'South')
+                      const maxSeats = Array.isArray(southSection?.rows) 
+                        ? Math.max(...southSection.rows.map((r: any) => r.seats))
+                        : (southSection?.seatsPerRow || 0)
+                      return Array.from({ length: Math.min(maxSeats, 12) }, (_, i) => (
+                        <div key={i} className="w-1.5 h-1 bg-orange-300 rounded-sm"></div>
+                      ))
+                    })()}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {(() => {
+                      const southSection = layout.structure.sections?.find((s: any) => s.name === 'South')
+                      const rowCount = Array.isArray(southSection?.rows) ? southSection.rows.length : (southSection?.rows || 0)
+                      const totalSeats = Array.isArray(southSection?.rows) 
+                        ? southSection.rows.reduce((sum: number, row: any) => sum + row.seats, 0)
+                        : ((southSection?.rows || 0) * (southSection?.seatsPerRow || 0))
+                      return `${rowCount}R × ${totalSeats}S`
+                    })()}
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">SOUTH</div>
                 </div>
               </div>
             </div>
@@ -282,11 +472,60 @@ const Layouts: React.FC = () => {
               </div>
 
               <div>
-                <h3 className={`text-lg font-medium mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Sections</h3>
-                <div className="space-y-4">
-                  {formData.structure.sections.map((section, index) => (
-                    <div key={index} className={`rounded-xl p-4 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className={`text-lg font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Sections</h3>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newSection = { 
+                          name: `Section ${formData.structure.sections.length + 1}`,
+                          rows: [
+                            { rowNumber: 1, seats: 10 },
+                            { rowNumber: 2, seats: 10 },
+                            { rowNumber: 3, seats: 10 }
+                          ]
+                        }
+                        setFormData({
+                          ...formData,
+                          structure: {
+                            ...formData.structure,
+                            sections: [...formData.structure.sections, newSection]
+                          }
+                        })
+                      }}
+                      className="px-3 py-1 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                      + Add Section
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  {formData.structure.sections.map((section, sectionIndex) => (
+                    <div key={sectionIndex} className={`rounded-xl p-4 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className={`font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {section.name} Section
+                        </h4>
+                        {formData.structure.sections.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSections = formData.structure.sections.filter((_, i) => i !== sectionIndex)
+                              setFormData({
+                                ...formData,
+                                structure: { ...formData.structure, sections: newSections }
+                              })
+                            }}
+                            className="text-red-500 hover:text-red-700 text-sm"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Section Basic Info */}
+                      <div className="grid grid-cols-1 gap-4 mb-4">
                         <div>
                           <label className={`block text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                             Section Name
@@ -294,37 +533,110 @@ const Layouts: React.FC = () => {
                           <input
                             type="text"
                             value={section.name}
-                            onChange={(e) => updateSection(index, 'name', e.target.value)}
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                          />
-                        </div>
-                        <div>
-                          <label className={`block text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Rows
-                          </label>
-                          <input
-                            type="number"
-                            value={section.rows}
-                            onChange={(e) => updateSection(index, 'rows', parseInt(e.target.value))}
-                            min="1"
-                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                          />
-                        </div>
-                        <div>
-                          <label className={`block text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Seats/Row
-                          </label>
-                          <input
-                            type="number"
-                            value={section.seatsPerRow}
-                            onChange={(e) => updateSection(index, 'seatsPerRow', parseInt(e.target.value))}
-                            min="1"
+                            onChange={(e) => updateSection(sectionIndex, 'name', e.target.value)}
                             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                           />
                         </div>
                       </div>
+
+                      {/* Row Configuration */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <label className={`block text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Row Configuration
+                          </label>
+                          <div className="flex space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => addRowToSection(sectionIndex)}
+                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            >
+                              + Add Row
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {Array.isArray(section.rows) && section.rows.map((row, rowIndex) => (
+                            <div key={rowIndex} className={`flex items-center space-x-3 p-2 rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                              <div className="flex-shrink-0">
+                                <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  Row {String.fromCharCode(65 + rowIndex)}:
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <input
+                                  type="number"
+                                  value={row.seats}
+                                  onChange={(e) => updateRowSeats(sectionIndex, rowIndex, parseInt(e.target.value) || 0)}
+                                  min="0"
+                                  max="30"
+                                  className={`w-full px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-primary-500 focus:border-transparent transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                                  placeholder="Seats"
+                                />
+                              </div>
+                              <div className="flex-shrink-0">
+                                <span className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  seats
+                                </span>
+                              </div>
+                              {Array.isArray(section.rows) && section.rows.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeRowFromSection(sectionIndex, rowIndex)}
+                                  className="flex-shrink-0 text-red-500 hover:text-red-700 text-xs"
+                                >
+                                  <TrashIcon className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Fallback for old format */}
+                      {!Array.isArray(section.rows) && (
+                        <div className={`p-3 rounded-lg text-sm transition-colors duration-200 ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
+                          <p>This layout uses the old format. Please edit and save to convert to the new row-by-row configuration.</p>
+                          <p className="mt-1">Current: {(section as any).rows || 0} rows × {(section as any).seatsPerRow || 0} seats per row</p>
+                        </div>
+                      )}
+                      
+                      {/* Section Summary */}
+                      <div className={`p-3 rounded-lg text-sm transition-colors duration-200 ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>
+                        <div className="flex justify-between items-center">
+                          <span>Total seats in {section.name}:</span>
+                          <span className="font-semibold">{Array.isArray(section.rows) ? section.rows.reduce((sum, row) => sum + row.seats, 0) : ((section as any).rows * (section as any).seatsPerRow || 0)} seats</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span>Number of rows:</span>
+                          <span className="font-semibold">{Array.isArray(section.rows) ? section.rows.length : ((section as any).rows || 0)} rows</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Layout Summary */}
+              <div className={`rounded-xl p-4 transition-colors duration-200 ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
+                <h4 className={`text-lg font-medium mb-3 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Layout Summary</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                      {formData.structure.sections.reduce((total, section) => {
+                        const sectionSeats = section.rows.reduce((sum, row) => sum + row.seats, 0)
+                        return total + sectionSeats
+                      }, 0)}
+                    </div>
+                    <div className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Seats</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                      {formData.structure.sections.length}
+                    </div>
+                    <div className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sections</div>
+                  </div>
                 </div>
               </div>
 

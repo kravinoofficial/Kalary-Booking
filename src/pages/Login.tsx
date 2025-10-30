@@ -34,7 +34,7 @@ const Login: React.FC = () => {
             <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-white font-bold text-xl">K</span>
             </div>
-            <h1 className="text-2xl font-semibold text-slate-900 mb-1">Kalari Admin</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 mb-1">Kalari System</h1>
             <p className="text-sm text-slate-500">Sign in to your account</p>
           </div>
 
@@ -50,7 +50,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 bg-slate-50"
-                placeholder="admin@kalari.com"
+                placeholder="Enter your email"
               />
             </div>
 

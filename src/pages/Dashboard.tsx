@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { differenceInDays, differenceInHours, differenceInMinutes, subWeeks, subMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
+import React, { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CurrencyDollarIcon,
   TicketIcon,
@@ -9,40 +8,12 @@ import {
   ArrowTrendingUpIcon,
   ClockIcon,
   UserIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  PlusIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline'
 import { useDarkMode } from '../hooks/useDarkMode'
-
-interface DashboardMetrics {
-  totalRevenue: number
-  todayRevenue: number
-  weekRevenue: number
-  monthRevenue: number
-  todayBookings: number
-  weeklyGrowth: number
-  monthlyGrowth: number
-  lastWeekRevenue: number
-  lastMonthRevenue: number
-  yesterdayRevenue: number
-  dailyGrowth: number
-}
-
-interface UpcomingEvent {
-  id: string
-  name: string
-  date: string
-  time: string
-  booked: number
-  capacity: number
-  countdown: string
-}
-
-interface TopEvent {
-  name: string
-  revenue: number
-  tickets: number
-  avgPrice: number
-}
+import { useDashboard } from '../contexts/DashboardContext'
 
 interface ActivityLog {
   id: string
@@ -61,384 +32,18 @@ interface ActivityLog {
 
 
 
+
+
 const Dashboard: React.FC = () => {
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
   const darkMode = useDarkMode()
-
-  // Real data states
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    totalRevenue: 0,
-    todayRevenue: 0,
-    weekRevenue: 0,
-    monthRevenue: 0,
-    todayBookings: 0,
-    weeklyGrowth: 0,
-    monthlyGrowth: 0,
-    lastWeekRevenue: 0,
-    lastMonthRevenue: 0,
-    yesterdayRevenue: 0,
-    dailyGrowth: 0
-  })
-
-  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([])
-  const [topEvents, setTopEvents] = useState<TopEvent[]>([])
-  const [dailyRevenue, setDailyRevenue] = useState<number[]>([])
-  const [weeklyTickets, setWeeklyTickets] = useState<number[]>([])
-  const [monthlyTickets, setMonthlyTickets] = useState(0)
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
-  const [logsLoading, setLogsLoading] = useState(false)
-
+  const { data, loading, logsLoading, fetchDashboardData, fetchActivityLogs } = useDashboard()
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [fetchDashboardData])
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      await Promise.all([
-        fetchMetrics(),
-        fetchUpcomingEvents(),
-        fetchTopEvents(),
-        fetchDailyData(),
-        fetchActivityLogs()
-      ])
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchMetrics = async () => {
-    try {
-      const now = new Date()
-      const today = now.toISOString().split('T')[0]
-      const yesterday = subDays(now, 1).toISOString().split('T')[0]
-
-      // Date ranges
-      const thisWeekStart = startOfWeek(now).toISOString()
-      const thisWeekEnd = endOfWeek(now).toISOString()
-      const lastWeekStart = startOfWeek(subWeeks(now, 1)).toISOString()
-      const lastWeekEnd = endOfWeek(subWeeks(now, 1)).toISOString()
-
-      const thisMonthStart = startOfMonth(now).toISOString()
-      const thisMonthEnd = endOfMonth(now).toISOString()
-      const lastMonthStart = startOfMonth(subMonths(now, 1)).toISOString()
-      const lastMonthEnd = endOfMonth(subMonths(now, 1)).toISOString()
-
-      // Get all tickets for total revenue (including ACTIVE and COMPLETED)
-      const { data: allTickets } = await supabase
-        .from('tickets')
-        .select('price, generated_at, status')
-        .in('status', ['ACTIVE', 'COMPLETED'])
-
-      if (!allTickets) return
-
-      // Calculate total revenue from all valid tickets
-      const totalRevenue = allTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // Today's data
-      const todayTickets = allTickets.filter(ticket => {
-        const ticketDate = new Date(ticket.generated_at).toISOString().split('T')[0]
-        return ticketDate === today
-      })
-      const todayRevenue = todayTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // Yesterday's data
-      const yesterdayTickets = allTickets.filter(ticket => {
-        const ticketDate = new Date(ticket.generated_at).toISOString().split('T')[0]
-        return ticketDate === yesterday
-      })
-      const yesterdayRevenue = yesterdayTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // This week's data
-      const thisWeekTickets = allTickets.filter(ticket => {
-        const ticketDateTime = new Date(ticket.generated_at)
-        return ticketDateTime >= new Date(thisWeekStart) && ticketDateTime <= new Date(thisWeekEnd)
-      })
-      const weekRevenue = thisWeekTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // Last week's data
-      const lastWeekTickets = allTickets.filter(ticket => {
-        const ticketDateTime = new Date(ticket.generated_at)
-        return ticketDateTime >= new Date(lastWeekStart) && ticketDateTime <= new Date(lastWeekEnd)
-      })
-      const lastWeekRevenue = lastWeekTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // This month's data
-      const thisMonthTickets = allTickets.filter(ticket => {
-        const ticketDateTime = new Date(ticket.generated_at)
-        return ticketDateTime >= new Date(thisMonthStart) && ticketDateTime <= new Date(thisMonthEnd)
-      })
-      const monthRevenue = thisMonthTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // Last month's data
-      const lastMonthTickets = allTickets.filter(ticket => {
-        const ticketDateTime = new Date(ticket.generated_at)
-        return ticketDateTime >= new Date(lastMonthStart) && ticketDateTime <= new Date(lastMonthEnd)
-      })
-      const lastMonthRevenue = lastMonthTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-      // Debug logging
-      console.log('Debug - Date ranges:', {
-        today,
-        yesterday,
-        thisWeekStart,
-        thisWeekEnd,
-        lastWeekStart,
-        lastWeekEnd,
-        thisMonthStart,
-        thisMonthEnd,
-        lastMonthStart,
-        lastMonthEnd
-      })
-      
-      console.log('Debug - Revenue calculations:', {
-        totalTickets: allTickets.length,
-        todayRevenue,
-        yesterdayRevenue,
-        weekRevenue,
-        lastWeekRevenue,
-        monthRevenue,
-        lastMonthRevenue,
-        todayTickets: todayTickets.length,
-        yesterdayTickets: yesterdayTickets.length,
-        thisWeekTickets: thisWeekTickets.length,
-        lastWeekTickets: lastWeekTickets.length
-      })
-
-      // Calculate growth percentages
-      const weeklyGrowth = lastWeekRevenue > 0 ? ((weekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100 : (weekRevenue > 0 ? 100 : 0)
-      const monthlyGrowth = lastMonthRevenue > 0 ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : (monthRevenue > 0 ? 100 : 0)
-      const dailyGrowth = yesterdayRevenue > 0 ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100 : (todayRevenue > 0 ? 100 : 0)
-
-      setMetrics({
-        totalRevenue,
-        todayRevenue,
-        weekRevenue,
-        monthRevenue,
-        todayBookings: todayTickets.length,
-        weeklyGrowth,
-        monthlyGrowth,
-        lastWeekRevenue,
-        lastMonthRevenue,
-        yesterdayRevenue,
-        dailyGrowth
-      })
-    } catch (error) {
-      console.error('Error fetching metrics:', error)
-    }
-  }
-
-  const fetchUpcomingEvents = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0]
-
-      // Get upcoming shows
-      const { data: shows } = await supabase
-        .from('shows')
-        .select(`
-          *,
-          layout:layouts(structure)
-        `)
-        .eq('active', true)
-        .gte('date', today)
-        .order('date')
-        .limit(10) // Get more shows to filter from
-
-      if (!shows) return
-
-      const events: UpcomingEvent[] = []
-      const now = new Date()
-
-      for (const show of shows) {
-        // Check if show has already started
-        const showDateTime = new Date(`${show.date}T${show.time}`)
-        
-        // Skip shows that have already started
-        if (showDateTime <= now) {
-          continue
-        }
-
-        // Calculate total capacity
-        let capacity = 0
-        if (show.layout?.structure?.sections) {
-          show.layout.structure.sections.forEach((section: any) => {
-            capacity += section.rows * section.seatsPerRow
-          })
-        }
-
-        // Get bookings for this show
-        const { data: bookings } = await supabase
-          .from('bookings')
-          .select('seat_code')
-          .eq('show_id', show.id)
-          .eq('status', 'CONFIRMED')
-
-        // Count booked seats
-        let booked = 0
-        bookings?.forEach(booking => {
-          try {
-            const seats = JSON.parse(booking.seat_code)
-            booked += Array.isArray(seats) ? seats.length : 1
-          } catch {
-            booked += booking.seat_code.includes(',')
-              ? booking.seat_code.split(',').length
-              : 1
-          }
-        })
-
-        // Calculate countdown (we know it's not started since we filtered above)
-        const countdown = getCountdown(showDateTime, now)
-
-        events.push({
-          id: show.id,
-          name: show.title,
-          date: show.date,
-          time: show.time,
-          booked,
-          capacity,
-          countdown
-        })
-
-        // Stop when we have 3 upcoming events
-        if (events.length >= 3) {
-          break
-        }
-      }
-
-      setUpcomingEvents(events)
-    } catch (error) {
-      console.error('Error fetching upcoming events:', error)
-    }
-  }
-
-  const fetchTopEvents = async () => {
-    try {
-      // Get all shows with their revenue
-      const { data: shows } = await supabase
-        .from('shows')
-        .select('id, title, price')
-
-      if (!shows) return
-
-      const eventStats: TopEvent[] = []
-
-      for (const show of shows) {
-        // Get tickets for this show
-        const { data: tickets } = await supabase
-          .from('tickets')
-          .select('price')
-          .eq('show_id', show.id)
-          .in('status', ['ACTIVE', 'COMPLETED'])
-
-        if (tickets && tickets.length > 0) {
-          const revenue = tickets.reduce((sum, ticket) => sum + ticket.price, 0)
-          const ticketCount = tickets.length
-          const avgPrice = revenue / ticketCount
-
-          eventStats.push({
-            name: show.title,
-            revenue,
-            tickets: ticketCount,
-            avgPrice
-          })
-        }
-      }
-
-      // Sort by revenue and take top 3
-      eventStats.sort((a, b) => b.revenue - a.revenue)
-      setTopEvents(eventStats.slice(0, 3))
-    } catch (error) {
-      console.error('Error fetching top events:', error)
-    }
-  }
-
-  const fetchDailyData = async () => {
-    try {
-      const { data: tickets } = await supabase
-        .from('tickets')
-        .select('price, generated_at')
-        .in('status', ['ACTIVE', 'COMPLETED'])
-        .order('generated_at')
-
-      if (!tickets) return
-
-      const now = new Date()
-      const thisMonthStart = startOfMonth(now).toISOString()
-      const thisMonthEnd = endOfMonth(now).toISOString()
-
-      // Get last 7 days of data
-      const revenueArray: number[] = []
-      const ticketsArray: number[] = []
-
-      for (let i = 6; i >= 0; i--) {
-        const date = subDays(new Date(), i)
-        const dateStr = date.toISOString().split('T')[0]
-
-        const dayTickets = tickets.filter(ticket =>
-          ticket.generated_at.startsWith(dateStr)
-        )
-
-        const dayRevenue = dayTickets.reduce((sum, ticket) => sum + ticket.price, 0)
-
-        revenueArray.push(dayRevenue)
-        ticketsArray.push(dayTickets.length)
-      }
-
-      // Calculate actual monthly tickets
-      const monthlyTicketsData = tickets.filter(ticket =>
-        ticket.generated_at >= thisMonthStart && ticket.generated_at <= thisMonthEnd
-      )
-
-      setDailyRevenue(revenueArray)
-      setWeeklyTickets(ticketsArray)
-      setMonthlyTickets(monthlyTicketsData.length)
-    } catch (error) {
-      console.error('Error fetching daily data:', error)
-    }
-  }
-
-
-
-  const fetchActivityLogs = async () => {
-    try {
-      setLogsLoading(true)
-      const { data: logs } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('performed_at', { ascending: false })
-        .limit(50)
-
-      if (logs) {
-        setActivityLogs(logs)
-      }
-    } catch (error) {
-      console.error('Error fetching activity logs:', error)
-    } finally {
-      setLogsLoading(false)
-    }
-  }
-
-  const getCountdown = (showDateTime: Date, now: Date) => {
-    if (showDateTime < now) {
-      return 'Started'
-    }
-
-    const days = differenceInDays(showDateTime, now)
-    const hours = differenceInHours(showDateTime, now) % 24
-    const minutes = differenceInMinutes(showDateTime, now) % 60
-
-    if (days > 0) {
-      return `${days}d ${hours}h`
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m`
-    } else {
-      return `${minutes}m`
-    }
-  }
-
+  // Helper functions for rendering
   const getActionIcon = (action: string) => {
     switch (action.toLowerCase()) {
       case 'create':
@@ -511,7 +116,7 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  if (loading) {
+  if (loading || !data) {
     return (
       <div className={`min-h-screen flex items-center justify-center transition-colors duration-200 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <div className="text-center">
@@ -521,6 +126,8 @@ const Dashboard: React.FC = () => {
       </div>
     )
   }
+
+  const { metrics, upcomingEvents, activityLogs } = data
 
   return (
     <div className="space-y-4">
@@ -770,14 +377,26 @@ const Dashboard: React.FC = () => {
                 <span className={`text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Quick Actions</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className={`px-3 py-1 text-xs border rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-                  View Reports
+                <button 
+                  onClick={() => navigate('/reports')}
+                  className={`flex items-center space-x-1 px-3 py-1 text-xs border rounded-lg transition-colors duration-200 hover:scale-105 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                >
+                  <DocumentTextIcon className="h-3 w-3" />
+                  <span>View Reports</span>
                 </button>
-                <button className={`px-3 py-1 text-xs border rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-                  Add Show
+                <button 
+                  onClick={() => navigate('/shows')}
+                  className={`flex items-center space-x-1 px-3 py-1 text-xs border rounded-lg transition-colors duration-200 hover:scale-105 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                >
+                  <PlusIcon className="h-3 w-3" />
+                  <span>Add Show</span>
                 </button>
-                <button className={`px-3 py-1 text-xs border rounded-lg transition-colors duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-                  Export Data
+                <button 
+                  onClick={() => navigate('/analytics')}
+                  className={`flex items-center space-x-1 px-3 py-1 text-xs border rounded-lg transition-colors duration-200 hover:scale-105 ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                >
+                  <DocumentArrowDownIcon className="h-3 w-3" />
+                  <span>Export Data</span>
                 </button>
               </div>
             </div>

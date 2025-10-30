@@ -26,6 +26,7 @@ interface AnalyticsData {
   monthlyData: MonthlyData[]
   yearlyData: YearlyData[]
   showPerformance: ShowPerformance[]
+  customerPerformance: CustomerPerformance[]
   revenueComparison: RevenueComparison
 }
 
@@ -66,6 +67,19 @@ interface RevenueComparison {
   periodType: string
 }
 
+interface CustomerPerformance {
+  customerId: string
+  customerName: string
+  customerEmail?: string
+  totalRevenue: number
+  totalTickets: number
+  totalBookings: number
+  averageOrderValue: number
+  lastBookingDate: string
+}
+
+
+
 const Analytics: React.FC = () => {
   const darkMode = useDarkMode()
   const [loading, setLoading] = useState(true)
@@ -78,6 +92,7 @@ const Analytics: React.FC = () => {
     monthlyData: [],
     yearlyData: [],
     showPerformance: [],
+    customerPerformance: [],
     revenueComparison: {
       currentPeriod: 0,
       previousPeriod: 0,
@@ -161,6 +176,9 @@ const Analytics: React.FC = () => {
       // Calculate show performance
       const showPerformance = await calculateShowPerformance(shows, tickets)
 
+      // Calculate customer performance
+      const customerPerformance = await calculateCustomerPerformance(startDate, endDate)
+
       // Calculate revenue comparison
       const revenueComparison = calculateRevenueComparison(tickets, comparisonPeriod)
 
@@ -182,6 +200,7 @@ const Analytics: React.FC = () => {
         monthlyData,
         yearlyData,
         showPerformance,
+        customerPerformance,
         revenueComparison
       })
 
@@ -276,7 +295,13 @@ const Analytics: React.FC = () => {
       let capacity = 0
       if (show.layout?.structure?.sections) {
         show.layout.structure.sections.forEach((section: any) => {
-          capacity += section.rows * section.seatsPerRow
+          if (section.rows && Array.isArray(section.rows)) {
+            // New format with individual row configuration
+            capacity += section.rows.reduce((sum: number, row: any) => sum + row.seats, 0)
+          } else {
+            // Fallback for old format
+            capacity += section.rows * section.seatsPerRow || 0
+          }
         })
       }
 
@@ -309,6 +334,83 @@ const Analytics: React.FC = () => {
       }))
       .filter(show => show.tickets > 0)
       .sort((a, b) => b.revenue - a.revenue)
+  }
+
+  const calculateCustomerPerformance = async (startDate: string, endDate: string): Promise<CustomerPerformance[]> => {
+    try {
+      // Fetch bookings with customer and ticket information
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          customer_id,
+          booking_time,
+          customers!customer_id(id, name, email),
+          tickets(id, price, status)
+        `)
+        .eq('status', 'CONFIRMED')
+        .gte('booking_time', startDate)
+        .lte('booking_time', endDate)
+
+      if (error) throw error
+
+      if (!bookings) return []
+
+      // Group by customer
+      const customerMap = new Map<string, {
+        customerId: string
+        customerName: string
+        customerEmail?: string
+        totalRevenue: number
+        totalTickets: number
+        totalBookings: number
+        lastBookingDate: string
+      }>()
+
+      bookings.forEach((booking: any) => {
+        if (!booking.customers) return
+
+        const customer = booking.customers
+        const customerId = customer.id
+        const existing = customerMap.get(customerId) || {
+          customerId,
+          customerName: customer.name,
+          customerEmail: customer.email,
+          totalRevenue: 0,
+          totalTickets: 0,
+          totalBookings: 0,
+          lastBookingDate: booking.booking_time
+        }
+
+        // Calculate revenue from active/completed tickets only
+        const activeTickets = booking.tickets?.filter((ticket: any) => 
+          ticket.status === 'ACTIVE' || ticket.status === 'COMPLETED'
+        ) || []
+        
+        existing.totalRevenue += activeTickets.reduce((sum: number, ticket: any) => sum + ticket.price, 0)
+        existing.totalTickets += activeTickets.length
+        existing.totalBookings += 1
+        
+        // Update last booking date if this one is more recent
+        if (new Date(booking.booking_time) > new Date(existing.lastBookingDate)) {
+          existing.lastBookingDate = booking.booking_time
+        }
+
+        customerMap.set(customerId, existing)
+      })
+
+      // Convert to array and calculate average order value
+      return Array.from(customerMap.values())
+        .map(customer => ({
+          ...customer,
+          averageOrderValue: customer.totalBookings > 0 ? customer.totalRevenue / customer.totalBookings : 0
+        }))
+        .sort((a, b) => b.totalRevenue - a.totalRevenue) // Sort by revenue descending
+
+    } catch (error) {
+      console.error('Error calculating customer performance:', error)
+      return []
+    }
   }
 
   const calculateRevenueComparison = (tickets: any[], period: string): RevenueComparison => {
@@ -382,6 +484,7 @@ const Analytics: React.FC = () => {
       monthlyData: analytics.monthlyData,
       yearlyData: analytics.yearlyData,
       showPerformance: analytics.showPerformance,
+      customerPerformance: analytics.customerPerformance,
       revenueComparison: analytics.revenueComparison
     }
 
@@ -419,7 +522,7 @@ const Analytics: React.FC = () => {
       // Header with date range
       csvSections.push('Analytics Dashboard Report')
       csvSections.push(`Date Range: ${dateRange.start} to ${dateRange.end}`)
-      csvSections.push(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`)
+      csvSections.push(`Generated: ${format(new Date(), 'yyyy-MM-dd h:mm:ss a')}`)
       csvSections.push('')
       
       // Summary metrics
@@ -469,6 +572,17 @@ const Analytics: React.FC = () => {
         analytics.showPerformance.forEach(show => {
           const showDateFormatted = format(parseISO(show.showDate), 'MMM dd yyyy')
           csvSections.push(`"${show.showName}","${showDateFormatted}",${show.revenue},${show.tickets},${show.capacity},${show.occupancyRate.toFixed(1)}`)
+        })
+        csvSections.push('')
+      }
+      
+      // Customer performance data
+      if (analytics.customerPerformance.length > 0) {
+        csvSections.push('CUSTOMER PERFORMANCE')
+        csvSections.push('Customer Name,Email,Total Revenue (INR),Total Tickets,Total Bookings,Average Order Value (INR),Last Booking Date')
+        analytics.customerPerformance.forEach(customer => {
+          const lastBookingFormatted = format(parseISO(customer.lastBookingDate), 'MMM dd yyyy')
+          csvSections.push(`"${customer.customerName}","${customer.customerEmail || 'N/A'}",${customer.totalRevenue},${customer.totalTickets},${customer.totalBookings},${customer.averageOrderValue.toFixed(0)},"${lastBookingFormatted}"`)
         })
       }
 
@@ -563,7 +677,7 @@ const Analytics: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Total Revenue */}
         <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="flex items-center justify-between mb-4">
@@ -615,10 +729,23 @@ const Analytics: React.FC = () => {
             <p className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{analytics.averageTicketsPerShow.toFixed(0)}</p>
           </div>
         </div>
+
+        {/* Active Customers */}
+        <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-indigo-100 rounded-xl">
+              <UserGroupIcon className="h-6 w-6 text-indigo-600" />
+            </div>
+          </div>
+          <div>
+            <h3 className={`text-sm font-medium mb-1 transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Customers</h3>
+            <p className={`text-2xl font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{analytics.customerPerformance.length}</p>
+          </div>
+        </div>
       </div>
 
       {/* Data Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Time-based Data */}
         <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <h3 className={`text-lg font-semibold mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -719,6 +846,64 @@ const Analytics: React.FC = () => {
                           />
                         </div>
                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Customer Performance */}
+        <div className={`rounded-2xl p-6 shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <h3 className={`text-lg font-semibold mb-4 transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Customer Performance
+          </h3>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className={`border-b transition-colors duration-200 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <th className={`text-left py-3 px-2 text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Customer</th>
+                  <th className={`text-right py-3 px-2 text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Revenue</th>
+                  <th className={`text-right py-3 px-2 text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tickets</th>
+                  <th className={`text-right py-3 px-2 text-sm font-medium transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>AOV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.customerPerformance.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className={`py-8 text-center text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      No customer performance data available
+                    </td>
+                  </tr>
+                ) : analytics.customerPerformance.slice(0, 10).map((customer, index) => (
+                  <tr key={index} className={`border-b transition-colors duration-200 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <td className={`py-3 px-2 text-sm transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-white font-medium text-xs">
+                            {customer.customerName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">{customer.customerName}</div>
+                          {customer.customerEmail && (
+                            <div className={`text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {customer.customerEmail}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className={`py-3 px-2 text-sm text-right font-medium transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      ₹{customer.totalRevenue.toLocaleString()}
+                    </td>
+                    <td className={`py-3 px-2 text-sm text-right transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {customer.totalTickets}
+                    </td>
+                    <td className={`py-3 px-2 text-sm text-right transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      ₹{customer.averageOrderValue.toFixed(0)}
                     </td>
                   </tr>
                 ))}
