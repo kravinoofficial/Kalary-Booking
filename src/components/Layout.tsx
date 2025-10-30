@@ -36,13 +36,13 @@ const Layout: React.FC = () => {
     }
     return false
   })
-  // Initialize dark mode from localStorage immediately (default: true)
+  // Initialize dark mode from localStorage immediately (default: false - light mode)
   const [darkMode, setDarkMode] = React.useState(() => {
     if (typeof window !== 'undefined') {
       const savedDarkMode = localStorage.getItem('darkMode')
-      return savedDarkMode ? JSON.parse(savedDarkMode) : true
+      return savedDarkMode ? JSON.parse(savedDarkMode) : false
     }
-    return true
+    return false
   })
   const [showProfile, setShowProfile] = React.useState(false)
   const [showNotifications, setShowNotifications] = React.useState(false)
