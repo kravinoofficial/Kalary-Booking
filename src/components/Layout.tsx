@@ -181,9 +181,9 @@ const Layout: React.FC = () => {
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSidebarOpen(false)} />
-          <div className={`fixed inset-y-0 left-0 w-72 sm:w-64 shadow-2xl transition-colors duration-200 ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+          <div className={`fixed inset-y-0 left-0 w-72 sm:w-64 shadow-2xl transition-colors duration-200 flex flex-col ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
             {/* Mobile Header */}
-            <div className={`flex h-16 items-center justify-between px-4 sm:px-6 border-b transition-colors duration-200 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <div className={`flex h-16 items-center justify-between px-4 sm:px-6 border-b flex-shrink-0 transition-colors duration-200 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-800 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">K</span>
@@ -200,36 +200,38 @@ const Layout: React.FC = () => {
               </button>
             </div>
 
-            {/* Mobile Navigation */}
-            <nav className="mt-8 px-4">
-              <ul className="space-y-2">
-                {navigation.map((item) => {
-                  const isActive = location.pathname === item.href
-                  return (
-                    <li key={item.name}>
-                      <Link
-                        to={item.href}
-                        onClick={() => setSidebarOpen(false)}
-                        className={`flex items-center px-4 py-4 text-base font-medium rounded-xl transition-all duration-200 touch-manipulation ${isActive
-                          ? darkMode
-                            ? 'bg-slate-800 text-slate-100 shadow-sm border-l-4 border-slate-400'
-                            : 'bg-slate-100 text-slate-900 shadow-sm border-l-4 border-slate-600'
-                          : darkMode
-                            ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                          }`}
-                      >
-                        <item.icon className="h-6 w-6 mr-4 flex-shrink-0" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </nav>
+            {/* Mobile Navigation - Scrollable */}
+            <div className="flex-1 overflow-y-auto">
+              <nav className="mt-8 px-4 pb-4">
+                <ul className="space-y-2">
+                  {navigation.map((item) => {
+                    const isActive = location.pathname === item.href
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          to={item.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`flex items-center px-4 py-4 text-base font-medium rounded-xl transition-all duration-200 touch-manipulation ${isActive
+                            ? darkMode
+                              ? 'bg-slate-800 text-slate-100 shadow-sm border-l-4 border-slate-400'
+                              : 'bg-slate-100 text-slate-900 shadow-sm border-l-4 border-slate-600'
+                            : darkMode
+                              ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }`}
+                        >
+                          <item.icon className="h-6 w-6 mr-4 flex-shrink-0" />
+                          <span>{item.name}</span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </nav>
+            </div>
 
             {/* Mobile User Profile Section */}
-            <div className={`absolute bottom-0 left-0 right-0 p-4 border-t transition-colors duration-200 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <div className={`flex-shrink-0 p-4 border-t transition-colors duration-200 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 min-w-0 flex-1">
                   <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-800 rounded-xl flex items-center justify-center flex-shrink-0">
