@@ -62,7 +62,7 @@ const Layout: React.FC = () => {
     } else {
       document.documentElement.classList.remove('dark')
     }
-  }, [])
+  }, [darkMode])
 
   // Save dark mode preference and apply to document when it changes
   React.useEffect(() => {

@@ -387,6 +387,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [data])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchDashboardData = useCallback(async () => {
     // Check if we have cached data that's still fresh
     const now = Date.now()
@@ -427,13 +428,14 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const refreshData = useCallback(async () => {
     // Force refresh by clearing cache
     lastFetchTime.current = 0
     await fetchDashboardData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchDashboardData])
 
   const value = {
