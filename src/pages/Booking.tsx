@@ -39,24 +39,6 @@ const Booking: React.FC = () => {
     customer.phone?.includes(customerSearchTerm)
   )
 
-  const getSeatButtonClasses = (seat: SeatData, seatId: string) => {
-    if (seat.booked) {
-      return 'bg-red-100 border-red-400 text-red-600 cursor-not-allowed'
-    }
-    
-    if (selectedSeats.includes(seatId)) {
-      return 'bg-green-100 border-green-400 text-green-700'
-    }
-    
-    return darkMode 
-      ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:border-gray-500'
-      : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400'
-  }
-
-  const getSectionHeaderClasses = () => {
-    return `text-sm font-semibold mb-2 transition-colors duration-200 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`
-  }
-
   useEffect(() => {
     fetchActiveShows()
     fetchCustomers()
