@@ -10,8 +10,6 @@ import {
   TicketIcon,
   ChartBarIcon,
   ArrowDownTrayIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   UserGroupIcon
 } from '@heroicons/react/24/outline'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -106,7 +104,7 @@ const Analytics: React.FC = () => {
     start: format(subDays(new Date(), 90), 'yyyy-MM-dd'), // Extended to 90 days for more data
     end: format(new Date(), 'yyyy-MM-dd')
   })
-  const [viewType, setViewType] = useState<'daily' | 'monthly' | 'yearly'>('daily')
+  const [viewType] = useState<'daily' | 'monthly' | 'yearly'>('daily')
   const [comparisonPeriod, setComparisonPeriod] = useState<'day' | 'week' | 'month' | 'year'>('month')
 
   const fetchAnalyticsData = useCallback(async () => {
@@ -209,7 +207,7 @@ const Analytics: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [dateRange, viewType, comparisonPeriod])
+  }, [dateRange, comparisonPeriod])
 
   useEffect(() => {
     fetchAnalyticsData()

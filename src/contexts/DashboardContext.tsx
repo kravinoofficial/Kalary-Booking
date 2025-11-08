@@ -433,6 +433,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Force refresh by clearing cache
     lastFetchTime.current = 0
     await fetchDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchDashboardData])
 
   const value = {

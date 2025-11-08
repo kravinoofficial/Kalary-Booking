@@ -148,15 +148,6 @@ const Layout: React.FC = () => {
       { name: 'Ticket History', href: '/tickets', icon: TicketIcon },
     ]
 
-    const adminOnlyNavigation = [
-      { name: 'Dashboard', href: '/', icon: HomeIcon },
-      { name: 'Layouts', href: '/layouts', icon: Squares2X2Icon },
-      { name: 'Customer Reports', href: '/customer-reports', icon: DocumentTextIcon },
-      { name: 'Reports', href: '/reports', icon: ChartBarIcon },
-      { name: 'Analytics', href: '/analytics', icon: PresentationChartLineIcon },
-      { name: 'Staff Management', href: '/staff', icon: UsersIcon },
-    ]
-
     if (user?.role === 'admin') {
       return [
         { name: 'Dashboard', href: '/', icon: HomeIcon },
