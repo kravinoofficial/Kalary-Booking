@@ -33,6 +33,7 @@ const CustomerDetail: React.FC = () => {
     if (customerId) {
       fetchCustomerData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
 
   const fetchCustomerData = async () => {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase, Customer } from '../lib/supabase'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
@@ -16,7 +15,6 @@ import {
 } from '@heroicons/react/24/outline'
 
 const Customers: React.FC = () => {
-  const navigate = useNavigate()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -64,7 +62,7 @@ const Customers: React.FC = () => {
       errors.email = 'Please enter a valid email address'
     }
     
-    if (formData.phone && !/^[\+]?[0-9\-\s\(\)]{10,}$/.test(formData.phone)) {
+    if (formData.phone && !/^[+]?[0-9\-\s()]{10,}$/.test(formData.phone)) {
       errors.phone = 'Please enter a valid phone number'
     }
     

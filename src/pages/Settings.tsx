@@ -5,12 +5,11 @@ import { format } from 'date-fns'
 import { 
   UserIcon, 
   KeyIcon, 
-  DocumentArrowDownIcon,
-  CogIcon 
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline'
 
 const Settings: React.FC = () => {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('profile')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')

@@ -26,6 +26,7 @@ const Shows: React.FC = () => {
   useEffect(() => {
     fetchShows()
     fetchLayouts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Filter shows by selected date

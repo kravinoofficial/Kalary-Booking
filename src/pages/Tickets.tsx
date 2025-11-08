@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { supabase, Ticket, Customer } from '../lib/supabase'
+import { supabase, Ticket } from '../lib/supabase'
 import { format } from 'date-fns'
 import { QRCodeSVG as QRCode } from 'qrcode.react'
 import { 

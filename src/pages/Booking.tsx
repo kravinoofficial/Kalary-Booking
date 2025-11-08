@@ -60,12 +60,14 @@ const Booking: React.FC = () => {
   useEffect(() => {
     fetchActiveShows()
     fetchCustomers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     if (selectedShow) {
       fetchSeatsForShow(selectedShow.id)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShow])
 
   // Filter shows by selected date
