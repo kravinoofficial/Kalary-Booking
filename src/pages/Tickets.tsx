@@ -597,8 +597,8 @@ const Tickets: React.FC = () => {
 
       {/* Preview Modal */}
       {showPreview && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className={`max-w-md w-full rounded-2xl shadow-xl transition-colors duration-200 ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'}`}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-hidden">
+          <div className={`max-w-md w-full max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl transition-colors duration-200 ${darkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'}`}>
             <div className="p-6">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">

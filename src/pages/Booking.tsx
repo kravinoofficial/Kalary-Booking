@@ -535,7 +535,7 @@ const Booking: React.FC = () => {
           disabled={seat.booked}
           whileHover={{ scale: seat.booked ? 1 : 1.05 }}
           whileTap={{ scale: seat.booked ? 1 : 0.95 }}
-          className={`w-10 h-8 rounded border-2 text-xs font-medium transition-all ${seat.booked
+          className={`w-7 h-6 sm:w-10 sm:h-8 rounded border text-[10px] sm:text-xs font-medium transition-all ${seat.booked
             ? 'bg-red-100 border-red-400 text-red-600 cursor-not-allowed'
             : selectedSeats.includes(seat.id)
               ? 'bg-green-100 border-green-400 text-green-700'
@@ -556,37 +556,49 @@ const Booking: React.FC = () => {
     const sections = selectedShow.layout.structure.sections || []
 
     return (
-      <div className={`rounded-2xl p-6 w-full transition-colors duration-200 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <div className="max-w-7xl mx-auto">
-          {/* Title */}
-          <div className="text-center mb-6">
-            <h3 className={`text-lg font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              KALARI THEATER - RECTANGULAR SYSTEM VIEW
-            </h3>
-            <div className={`text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Complete Seating Layout
-            </div>
+      <div className={`rounded-2xl p-2 sm:p-6 w-full transition-colors duration-200 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        {/* Title */}
+        <div className="text-center mb-4 sm:mb-6">
+          <h3 className={`text-sm sm:text-lg font-bold transition-colors duration-200 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            KALARI THEATER - RECTANGULAR SYSTEM VIEW
+          </h3>
+          <div className={`text-xs sm:text-sm transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            Complete Seating Layout
           </div>
+          {/* Mobile scroll hint */}
+          <div className="sm:hidden mt-2 flex items-center justify-center gap-2 text-xs text-blue-500 animate-pulse">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+            </svg>
+            <span>Swipe to view all seats</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </div>
+        </div>
 
-          {/* Rectangular Grid Layout */}
-          <div className="grid grid-cols-1 gap-8">
+        {/* Horizontal scroll container for entire seat map on mobile */}
+        <div className="overflow-x-auto -mx-2 sm:mx-0 px-2 sm:px-0">
+          <div className="min-w-[650px] sm:min-w-0 max-w-7xl mx-auto">
+            {/* Rectangular Grid Layout */}
+            <div className="grid grid-cols-1 gap-4 sm:gap-8">
             
             {/* North Section - Top */}
             {sections.filter((s: any) => s.name === 'North').map((section: any) => {
               const sectionSeats = seats.filter(s => s.section === section.name)
               return (
-                <div key={section.name} className="border-2 border-dashed border-blue-300 p-4 rounded-lg">
-                  <div className={`text-center text-lg font-bold mb-4 transition-colors duration-200 ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>
+                <div key={section.name} className="border-2 border-dashed border-blue-300 p-2 sm:p-4 rounded-lg">
+                  <div className={`text-center text-sm sm:text-lg font-bold mb-2 sm:mb-4 transition-colors duration-200 ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>
                     NORTH SECTION
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1 sm:space-y-2">
                     {Array.isArray(section.rows) ? (
                       section.rows.slice().reverse().map((rowConfig: any, reverseIndex: number) => {
                         const rowIndex = section.rows.length - 1 - reverseIndex
                         const rowLetter = String.fromCharCode(65 + rowIndex)
                         return (
-                          <div key={rowIndex} className="flex justify-center gap-1">
-                            <div className={`w-8 text-xs font-bold flex items-center justify-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1">
+                            <div className={`w-6 sm:w-8 text-xs font-bold flex items-center justify-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                               {rowLetter}
                             </div>
                             {renderRowSeats(section, rowConfig, rowIndex, sectionSeats)}
@@ -599,8 +611,8 @@ const Booking: React.FC = () => {
                         const rowConfig = { seats: section.seatsPerRow || 0 }
                         const rowLetter = String.fromCharCode(65 + actualRowIndex)
                         return (
-                          <div key={rowIndex} className="flex justify-center gap-1">
-                            <div className={`w-8 text-xs font-bold flex items-center justify-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1">
+                            <div className={`w-6 sm:w-8 text-xs font-bold flex items-center justify-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                               {rowLetter}
                             </div>
                             {renderRowSeats(section, rowConfig, actualRowIndex, sectionSeats)}
@@ -614,7 +626,7 @@ const Booking: React.FC = () => {
             })}
 
             {/* Middle Row - West, Stage, East */}
-            <div className="grid grid-cols-3 gap-6 items-center">
+            <div className="grid grid-cols-3 gap-2 sm:gap-6 items-center">
               
               {/* West Section - Left (Vertical Layout with Center Alignment) */}
               {sections.filter((s: any) => s.name === 'West').map((section: any) => {
@@ -624,11 +636,11 @@ const Booking: React.FC = () => {
                   : (section.seatsPerRow || 0)
                 
                 return (
-                  <div key={section.name} className="border-2 border-dashed border-green-300 p-4 rounded-lg">
-                    <div className={`text-center text-lg font-bold mb-4 transition-colors duration-200 ${darkMode ? 'text-green-300' : 'text-green-600'}`}>
+                  <div key={section.name} className="border-2 border-dashed border-green-300 p-2 sm:p-4 rounded-lg">
+                    <div className={`text-center text-sm sm:text-lg font-bold mb-2 sm:mb-4 transition-colors duration-200 ${darkMode ? 'text-green-300' : 'text-green-600'}`}>
                       WEST SECTION
                     </div>
-                    <div className="flex gap-1 justify-center">
+                    <div className="flex gap-0.5 sm:gap-1 justify-center">
                       {Array.isArray(section.rows) ? (
                         [...section.rows].reverse().map((rowConfig: any, displayIndex: number) => {
                           const rowIndex = section.rows.length - 1 - displayIndex
@@ -766,14 +778,14 @@ const Booking: React.FC = () => {
               })}
 
               {/* Central Stage */}
-              <div className="flex flex-col items-center justify-center p-8">
-                <div className="w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg mb-4">
+              <div className="flex flex-col items-center justify-center p-2 sm:p-8">
+                <div className="w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-bold shadow-lg mb-2 sm:mb-4">
                   <div className="text-center">
-                    <div className="text-xl font-bold">Kalari</div>
-                    <div className="text-sm opacity-90">STAGE</div>
+                    <div className="text-sm sm:text-xl font-bold">Kalari</div>
+                    <div className="text-xs sm:text-sm opacity-90">STAGE</div>
                   </div>
                 </div>
-                <div className={`text-center text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className={`text-center text-xs transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-500'} hidden sm:block`}>
                   All eyes this way please
                 </div>
               </div>
@@ -965,21 +977,22 @@ const Booking: React.FC = () => {
                 </div>
               )
             })}
-          </div>
+            </div>
 
-          {/* Legend */}
-          <div className="flex justify-center mt-8 space-x-6 text-sm">
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-gray-50 border-2 border-gray-300 rounded mr-2"></div>
-              <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Available</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-green-100 border-2 border-green-400 rounded mr-2"></div>
-              <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Selected</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-red-100 border-2 border-red-400 rounded mr-2"></div>
-              <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Booked</span>
+            {/* Legend */}
+            <div className="flex justify-center mt-8 space-x-6 text-sm">
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-gray-50 border-2 border-gray-300 rounded mr-2"></div>
+                <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Available</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-green-100 border-2 border-green-400 rounded mr-2"></div>
+                <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Selected</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-red-100 border-2 border-red-400 rounded mr-2"></div>
+                <span className={`transition-colors duration-200 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Booked</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1219,11 +1232,11 @@ const Booking: React.FC = () => {
 
       {/* Success Modal */}
       {showConfirmation && bookingResult && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm p-4 overflow-hidden">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl border transition-colors duration-200 ${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'}`}
+            className={`rounded-3xl p-4 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border transition-colors duration-200 ${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'}`}
           >
             <div className="text-center">
               <motion.div
@@ -1300,11 +1313,11 @@ const Booking: React.FC = () => {
 
       {/* Customer Selection Modal */}
       {showCustomerModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm p-4 overflow-hidden">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className={`rounded-2xl p-6 max-w-md w-full shadow-2xl border transition-colors duration-200 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}
+            className={`rounded-2xl p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border transition-colors duration-200 ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className={`text-xl font-semibold ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>

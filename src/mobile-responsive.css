@@ -25,6 +25,33 @@
   background: #a0aec0;
 }
 
+/* Smooth scrolling for seat map on mobile */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Better scrollbar visibility on mobile */
+@media (max-width: 640px) {
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: rgba(203, 213, 224, 0.3);
+    border-radius: 4px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 4px;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb:active {
+    background: rgba(59, 130, 246, 0.8);
+  }
+}
+
 /* Ensure proper touch targets on mobile */
 @media (max-width: 640px) {
   /* Seat buttons - larger touch targets on mobile */
